@@ -1,0 +1,100 @@
+# ============================================================================
+# GitClaw Agent Registry
+# ============================================================================
+# Each agent is a specialized personality that handles specific triggers.
+# They all share the base personality but add their own flair.
+
+agents:
+  morning_roast:
+    name: "Morning Roast"
+    emoji: "☕"
+    description: "Serves your daily issue digest with extra sass and coffee metaphors"
+    trigger: "schedule"
+    schedule: "0 9 * * 1-5"  # 9 AM UTC, weekdays
+    prompt_file: "templates/prompts/morning-roast.md"
+    enabled: true
+
+  quest_master:
+    name: "Quest Master"
+    emoji: "⚔️"
+    description: "Turns boring issues into epic RPG quests with XP rewards"
+    trigger: "issues"
+    prompt_file: "templates/prompts/quest-master.md"
+    enabled: true
+
+  code_jester:
+    name: "Code Jester"
+    emoji: "🃏"
+    description: "Reviews PRs with witty commentary and actually useful feedback"
+    trigger: "pull_request"
+    prompt_file: "templates/prompts/code-jester.md"
+    enabled: true
+
+  wild_fact_finder:
+    name: "Wild Fact Finder"
+    emoji: "🔍"
+    description: "Researches anything you ask with entertaining tangents and sources"
+    trigger: "issue_comment"
+    command: "/research"
+    prompt_file: "templates/prompts/wild-fact-finder.md"
+    enabled: true
+
+  meme_machine:
+    name: "Meme Machine"
+    emoji: "🎨"
+    description: "Generates viral content ideas, tweet drafts, and creative copy"
+    trigger: "workflow_dispatch"
+    prompt_file: "templates/prompts/meme-machine.md"
+    enabled: true
+
+  lore_keeper:
+    name: "Lore Keeper"
+    emoji: "📜"
+    description: "Curates your repo's knowledge base with dramatic narrative flair"
+    trigger: "issue_comment"
+    command: "/lore"
+    prompt_file: "templates/prompts/lore-keeper.md"
+    enabled: true
+
+  dream_interpreter:
+    name: "Dream Interpreter"
+    emoji: "🌙"
+    description: "Personal journaling agent — interprets dreams and life musings"
+    trigger: "issue_comment"
+    command: "/dream"
+    prompt_file: "templates/prompts/dream-interpreter.md"
+    enabled: true
+
+  fortune_cookie:
+    name: "Fortune Cookie"
+    emoji: "🔮"
+    description: "Daily wisdom, coding fortunes, and motivational nonsense"
+    trigger: "schedule"
+    schedule: "0 8 * * *"  # 8 AM UTC daily
+    prompt_file: "templates/prompts/fortune-cookie.md"
+    enabled: true
+
+  hype_man:
+    name: "Hype Man"
+    emoji: "🎉"
+    description: "Celebrates milestones, merged PRs, and closed issues with fanfare"
+    trigger: "issues"
+    event: "closed"
+    prompt_file: "templates/prompts/hype-man.md"
+    enabled: true
+
+  roast_battle:
+    name: "Roast Battle"
+    emoji: "🔥"
+    description: "On-demand code roasts — point it at any file for brutal honesty"
+    trigger: "issue_comment"
+    command: "/roast"
+    prompt_file: "templates/prompts/roast-battle.md"
+    enabled: true
+
+# Global settings for all agents
+defaults:
+  provider: "anthropic"
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 2048
+  temperature: 0.7

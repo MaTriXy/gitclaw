@@ -1,0 +1,117 @@
+# ============================================================================
+# Command Router — GitClaw's nerve center
+# Routes slash commands from issue comments to the right agent.
+# Triggered by: /research, /lore, /dream, /roast, /help
+# ============================================================================
+name: "🦞 Command Router"
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  route:
+    # Only run on comments that start with /
+    if: startsWith(github.event.comment.body, '/')
+    runs-on: ubuntu-latest
+    outputs:
+      command: ${{ steps.parse.outputs.command }}
+      args: ${{ steps.parse.outputs.args }}
+
+    steps:
+      - name: Parse command
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          COMMAND=$(echo "$COMMENT_BODY" | head -1 | awk '{print $1}' | tr -d '/')
+          ARGS=$(echo "$COMMENT_BODY" | head -1 | sed 's|^/[a-zA-Z_-]* *||')
+          echo "command=$COMMAND" >> "$GITHUB_OUTPUT"
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+          echo "Parsed command: /$COMMAND with args: $ARGS"
+
+      - name: React to acknowledge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='eyes' || true
+
+  # ─── Research Agent ────────────────────────────────────────────────
+  research:
+    needs: route
+    if: needs.route.outputs.command == 'research'
+    uses: ./.github/workflows/wild-fact-finder.yml
+    with:
+      topic: ${{ needs.route.outputs.args }}
+      issue_number: ${{ github.event.issue.number }}
+    secrets: inherit
+
+  # ─── Lore Keeper Agent ─────────────────────────────────────────────
+  lore:
+    needs: route
+    if: needs.route.outputs.command == 'lore'
+    uses: ./.github/workflows/lore-keeper.yml
+    with:
+      topic: ${{ needs.route.outputs.args }}
+      issue_number: ${{ github.event.issue.number }}
+    secrets: inherit
+
+  # ─── Dream Interpreter Agent ───────────────────────────────────────
+  dream:
+    needs: route
+    if: needs.route.outputs.command == 'dream'
+    uses: ./.github/workflows/dream-interpreter.yml
+    with:
+      description: ${{ needs.route.outputs.args }}
+      issue_number: ${{ github.event.issue.number }}
+    secrets: inherit
+
+  # ─── Roast Battle Agent ────────────────────────────────────────────
+  roast:
+    needs: route
+    if: needs.route.outputs.command == 'roast'
+    uses: ./.github/workflows/roast-battle.yml
+    with:
+      target: ${{ needs.route.outputs.args }}
+      issue_number: ${{ github.event.issue.number }}
+    secrets: inherit
+
+  # ─── Help ──────────────────────────────────────────────────────────
+  help:
+    needs: route
+    if: needs.route.outputs.command == 'help'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post help message
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HELP_MSG=$(cat <<'HELP'
+          ## 🦞 GitClaw Commands
+
+          | Command | Agent | Description |
+          |---------|-------|-------------|
+          | `/research <topic>` | 🔍 Wild Fact Finder | Research any topic with entertaining flair |
+          | `/lore <topic>` | 📜 Lore Keeper | Add an entry to the repo's knowledge chronicles |
+          | `/dream <description>` | 🌙 Dream Interpreter | Log and interpret a dream |
+          | `/roast <file_or_topic>` | 🔥 Roast Battle | Get a brutally honest code roast |
+          | `/help` | 🦞 GitClaw | Show this help message |
+
+          **Automatic Agents** (no command needed):
+          - ☕ **Morning Roast** — Daily issue digest (weekdays 9 AM UTC)
+          - ⚔️ **Quest Master** — Auto-gamifies new issues
+          - 🃏 **Code Jester** — Auto-reviews PRs
+          - 🔮 **Fortune Cookie** — Daily coding wisdom (8 AM UTC)
+          - 🎉 **Hype Man** — Celebrates closed issues/merged PRs
+
+          *— 🦞 GitClaw, at your service*
+          HELP
+          )
+
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="$HELP_MSG"

@@ -1,0 +1,68 @@
+# ============================================================================
+# Heartbeat — GitClaw's vital signs monitor
+# Runs periodically to update agent state, check health, and maintain streaks.
+# ============================================================================
+name: "💓 Heartbeat"
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Midnight UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pulse:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check pulse
+        run: |
+          source scripts/utils.sh
+          source scripts/git-persist.sh
+
+          TODAY=$(today)
+          STATE_FILE="memory/state.json"
+
+          # Update last active
+          update_state ".last_active = \"$TODAY\""
+
+          # Update streak
+          LAST_DATE=$(jq -r '.streak.last_date // ""' "$STATE_FILE")
+          CURRENT_STREAK=$(jq -r '.streak.current // 0' "$STATE_FILE")
+          LONGEST_STREAK=$(jq -r '.streak.longest // 0' "$STATE_FILE")
+
+          if [ "$LAST_DATE" = "$(date -u -d 'yesterday' +%Y-%m-%d 2>/dev/null || date -u -v-1d +%Y-%m-%d 2>/dev/null)" ]; then
+            # Consecutive day — increment streak
+            NEW_STREAK=$((CURRENT_STREAK + 1))
+            if [ $NEW_STREAK -gt $LONGEST_STREAK ]; then
+              LONGEST_STREAK=$NEW_STREAK
+            fi
+            update_state ".streak.current = $NEW_STREAK | .streak.longest = $LONGEST_STREAK | .streak.last_date = \"$TODAY\""
+            log_info "Streak continues! Day $NEW_STREAK"
+          elif [ "$LAST_DATE" != "$TODAY" ]; then
+            # Streak broken or first day
+            update_state ".streak.current = 1 | .streak.last_date = \"$TODAY\""
+            log_info "New streak started!"
+          fi
+
+          # Update level based on XP
+          XP=$(jq '.xp // 0' "$STATE_FILE")
+          LEVEL=$(get_level "$XP")
+          update_state ".level = \"$LEVEL\""
+
+          # Increment commits counter
+          update_state '.stats.commits_made += 1'
+
+          log_info "Heartbeat complete. XP: $XP | Level: $LEVEL | Streak: $(jq '.streak.current' $STATE_FILE)"
+
+      - name: Persist heartbeat
+        run: |
+          source scripts/git-persist.sh
+          persist "memory/state.json" "💓 Heartbeat — $(today)"

@@ -1,0 +1,114 @@
+# ============================================================================
+# Hype Man — Celebrates closed issues and merged PRs
+# Because every victory deserves confetti.
+# ============================================================================
+name: "🎉 Hype Man"
+
+on:
+  issues:
+    types: [closed]
+  pull_request:
+    types: [closed]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: write
+
+jobs:
+  celebrate:
+    runs-on: ubuntu-latest
+    # Only celebrate if PR was actually merged (not just closed)
+    if: >
+      github.event_name == 'issues' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read state
+        id: state
+        run: |
+          STATE=$(cat memory/state.json 2>/dev/null || echo '{}')
+          echo "state<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$STATE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Generate celebration
+        id: hype
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          source scripts/utils.sh
+          source scripts/llm.sh
+
+          SYSTEM_PROMPT=$(cat templates/prompts/hype-man.md)
+
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            EVENT_TYPE="issue_closed"
+            TITLE="${{ github.event.issue.title }}"
+            CONTRIBUTOR="${{ github.event.issue.user.login }}"
+            NUMBER="${{ github.event.issue.number }}"
+          else
+            EVENT_TYPE="pr_merged"
+            TITLE="${{ github.event.pull_request.title }}"
+            CONTRIBUTOR="${{ github.event.pull_request.user.login }}"
+            NUMBER="${{ github.event.pull_request.number }}"
+          fi
+
+          USER_MSG=$(cat <<MSG
+          Event: $EVENT_TYPE
+          Title: $TITLE
+          Contributor: @$CONTRIBUTOR
+          Number: #$NUMBER
+
+          Agent State:
+          ${{ steps.state.outputs.state }}
+
+          Generate a celebration worthy of this achievement!
+          MSG
+          )
+
+          PROVIDER="${GITCLAW_PROVIDER:-anthropic}"
+          MODEL="${GITCLAW_MODEL:-claude-haiku-4-5-20251001}"  # Quick celebrations
+
+          RESPONSE=$(call_llm "$PROVIDER" "$MODEL" "$SYSTEM_PROMPT" "$USER_MSG" 1000)
+
+          echo "hype<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post celebration
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            NUMBER="${{ github.event.issue.number }}"
+          else
+            NUMBER="${{ github.event.pull_request.number }}"
+          fi
+
+          gh api repos/${{ github.repository }}/issues/$NUMBER/comments \
+            -f body='${{ steps.hype.outputs.hype }}'
+
+      - name: Update XP
+        run: |
+          source scripts/git-persist.sh
+
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            update_state '.stats.issues_triaged += 1 | .xp += 10'
+          else
+            update_state '.stats.prs_reviewed += 1 | .xp += 25'
+          fi
+
+          # Update level
+          XP=$(jq '.xp' memory/state.json)
+          source scripts/utils.sh
+          LEVEL=$(get_level "$XP")
+          jq --arg level "$LEVEL" '.level = $level' memory/state.json > tmp.json && mv tmp.json memory/state.json
+
+          persist "memory/state.json" "🎉 Celebration! XP awarded"

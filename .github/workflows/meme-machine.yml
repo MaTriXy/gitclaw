@@ -1,0 +1,114 @@
+# ============================================================================
+# Meme Machine — Content generation via manual dispatch
+# Generate viral content ideas, tweet threads, blog outlines.
+# ============================================================================
+name: "🎨 Meme Machine"
+
+on:
+  workflow_dispatch:
+    inputs:
+      content_type:
+        description: "Content type"
+        required: true
+        type: choice
+        options:
+          - tweet_thread
+          - blog_outline
+          - meme_concepts
+          - content_calendar
+      topic:
+        description: "Topic / subject matter"
+        required: true
+        type: string
+      tone:
+        description: "Tone"
+        required: false
+        type: choice
+        default: "funny"
+        options:
+          - funny
+          - professional
+          - provocative
+          - educational
+      platform:
+        description: "Target platform"
+        required: false
+        type: choice
+        default: "twitter"
+        options:
+          - twitter
+          - linkedin
+          - reddit
+          - general
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fire up the machine
+        id: content
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          source scripts/utils.sh
+          source scripts/llm.sh
+
+          SYSTEM_PROMPT=$(cat templates/prompts/meme-machine.md)
+
+          USER_MSG=$(cat <<MSG
+          Generate content:
+          - Type: ${{ inputs.content_type }}
+          - Topic: ${{ inputs.topic }}
+          - Tone: ${{ inputs.tone }}
+          - Platform: ${{ inputs.platform }}
+
+          Create the content now. Make it genuinely good enough to post.
+          MSG
+          )
+
+          PROVIDER="${GITCLAW_PROVIDER:-anthropic}"
+          MODEL="${GITCLAW_MODEL:-claude-sonnet-4-5-20250929}"
+
+          RESPONSE=$(call_llm "$PROVIDER" "$MODEL" "$SYSTEM_PROMPT" "$USER_MSG" 2000)
+
+          echo "content<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Save content
+        run: |
+          SLUG=$(echo "${{ inputs.topic }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | head -c 50)
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M")
+          mkdir -p memory/content
+
+          cat <<'CONTENT' > "memory/content/${TIMESTAMP}-${SLUG}.md"
+          # 🎨 Content: ${{ inputs.topic }}
+          _Generated on $(date -u +"%Y-%m-%d %H:%M UTC")_
+          _Type: ${{ inputs.content_type }} | Tone: ${{ inputs.tone }} | Platform: ${{ inputs.platform }}_
+
+          ---
+
+          ${{ steps.content.outputs.content }}
+          CONTENT
+
+      - name: Persist
+        run: |
+          source scripts/git-persist.sh
+          persist_many "🎨 Content generated: ${{ inputs.topic }}" \
+            "memory/content/" "memory/state.json"
+
+      - name: Summary
+        run: |
+          echo "### 🎨 Meme Machine Output" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '${{ steps.content.outputs.content }}' >> $GITHUB_STEP_SUMMARY

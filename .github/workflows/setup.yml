@@ -1,0 +1,125 @@
+# ============================================================================
+# Setup — One-time initialization workflow
+# Run this after forking to set up labels and initial state.
+# ============================================================================
+name: "🦞 GitClaw Setup"
+
+on:
+  workflow_dispatch:
+    inputs:
+      persona:
+        description: "Choose your agent's persona"
+        required: true
+        type: choice
+        default: "default"
+        options:
+          - default
+          - pirate
+          - wizard
+          - meme_lord
+          - butler
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  initialize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source scripts/github-api.sh
+          ensure_labels
+
+      - name: Initialize state
+        run: |
+          source scripts/git-persist.sh
+
+          # Reset state with chosen persona
+          cat > memory/state.json <<STATE
+          {
+            "agent": {
+              "name": "GitClaw",
+              "persona": "${{ inputs.persona }}",
+              "born": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "version": "1.0.0"
+            },
+            "xp": 0,
+            "level": "Unawakened",
+            "stats": {
+              "issues_triaged": 0,
+              "prs_reviewed": 0,
+              "researches_completed": 0,
+              "quests_completed": 0,
+              "lore_entries": 0,
+              "dreams_interpreted": 0,
+              "fortunes_dispensed": 0,
+              "roasts_delivered": 0,
+              "comments_posted": 0,
+              "commits_made": 0
+            },
+            "achievements": [],
+            "last_active": "$(date -u +%Y-%m-%d)",
+            "streak": {
+              "current": 1,
+              "longest": 1,
+              "last_date": "$(date -u +%Y-%m-%d)"
+            }
+          }
+          STATE
+
+      - name: Persist setup
+        run: |
+          source scripts/git-persist.sh
+          persist "memory/state.json" "🦞 GitClaw initialized! Persona: ${{ inputs.persona }}"
+
+      - name: Create welcome issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "🦞 Welcome to GitClaw!" \
+            --body "$(cat <<'WELCOME'
+          ## Your GitClaw agent is alive!
+
+          **Persona:** ${{ inputs.persona }}
+          **Status:** Awakened and ready
+
+          ### Quick Start
+          Try these commands in any issue comment:
+          - `/help` — See all available commands
+          - `/research quantum computing` — Research a topic
+          - `/dream I was debugging in a forest` — Log a dream
+          - `/roast scripts/llm.sh` — Roast a file
+          - `/lore the beginning` — Start the chronicles
+
+          ### Automatic Features
+          - **☕ Morning Roast** runs weekdays at 9 AM UTC
+          - **🔮 Fortune Cookie** runs daily at 8 AM UTC
+          - **⚔️ Quest Master** activates on new issues
+          - **🃏 Code Jester** reviews new PRs
+          - **🎉 Hype Man** celebrates closed issues
+
+          *— 🦞 GitClaw, reporting for duty*
+          WELCOME
+          )"
+
+      - name: Summary
+        run: |
+          echo "### 🦞 GitClaw Setup Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Persona: **${{ inputs.persona }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Labels: Created" >> $GITHUB_STEP_SUMMARY
+          echo "- State: Initialized" >> $GITHUB_STEP_SUMMARY
+          echo "- Welcome issue: Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Your agent is ready! Try posting \`/help\` in any issue." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,88 @@
+# ============================================================================
+# Code Jester — PR review with theatrical commentary
+# Triggers on new PRs, delivers humor-infused code review.
+# ============================================================================
+name: "🃏 Code Jester"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    # Don't review the bot's own PRs
+    if: github.actor != 'gitclaw[bot]'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the diff
+          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} 2>/dev/null | head -500)
+          echo "diff<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$DIFF" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # Get changed files
+          FILES=$(gh pr view ${{ github.event.pull_request.number }} --json files --jq '.files[].path' | head -20)
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$FILES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Summon the Jester
+        id: review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          source scripts/utils.sh
+          source scripts/llm.sh
+
+          SYSTEM_PROMPT=$(cat templates/prompts/code-jester.md)
+
+          USER_MSG=$(cat <<MSG
+          Review this PR:
+
+          PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+
+          Description:
+          ${{ github.event.pull_request.body }}
+
+          Changed files:
+          ${{ steps.diff.outputs.files }}
+
+          Diff (truncated):
+          ${{ steps.diff.outputs.diff }}
+
+          Deliver your Jester's Review now.
+          MSG
+          )
+
+          PROVIDER="${GITCLAW_PROVIDER:-anthropic}"
+          MODEL="${GITCLAW_MODEL:-claude-sonnet-4-5-20250929}"
+
+          RESPONSE=$(call_llm "$PROVIDER" "$MODEL" "$SYSTEM_PROMPT" "$USER_MSG" 2000)
+
+          echo "review<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post the review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review ${{ github.event.pull_request.number }} \
+            --comment \
+            --body '${{ steps.review.outputs.review }}'

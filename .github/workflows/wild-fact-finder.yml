@@ -1,0 +1,105 @@
+# ============================================================================
+# Wild Fact Finder — Research agent triggered by /research command
+# Callable from command-router or directly via workflow_dispatch.
+# ============================================================================
+name: "🔍 Wild Fact Finder"
+
+on:
+  workflow_call:
+    inputs:
+      topic:
+        required: true
+        type: string
+      issue_number:
+        required: true
+        type: number
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Topic to research"
+        required: true
+        type: string
+      issue_number:
+        description: "Issue number to post results to (0 = create new)"
+        required: false
+        default: "0"
+        type: string
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Research the topic
+        id: research
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          source scripts/utils.sh
+          source scripts/llm.sh
+
+          TOPIC="${{ inputs.topic }}"
+          SYSTEM_PROMPT=$(cat templates/prompts/wild-fact-finder.md)
+
+          USER_MSG=$(cat <<MSG
+          Research topic: $TOPIC
+
+          Provide a thorough, entertaining research brief on this topic.
+          Include key findings, a wild card fact, a fun tangent, and a tech connection.
+          MSG
+          )
+
+          PROVIDER="${GITCLAW_PROVIDER:-anthropic}"
+          MODEL="${GITCLAW_MODEL:-claude-sonnet-4-5-20250929}"
+
+          RESPONSE=$(call_llm "$PROVIDER" "$MODEL" "$SYSTEM_PROMPT" "$USER_MSG" 1500)
+
+          echo "response<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post findings
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE="${{ inputs.issue_number }}"
+
+          if [ "$ISSUE" = "0" ] || [ -z "$ISSUE" ]; then
+            # Create a new issue for the research
+            gh issue create \
+              --title "🔍 Research: ${{ inputs.topic }}" \
+              --body '${{ steps.research.outputs.response }}' \
+              --label "gitclaw:research"
+          else
+            # Post as comment on existing issue
+            gh api repos/${{ github.repository }}/issues/$ISSUE/comments \
+              -f body='${{ steps.research.outputs.response }}'
+          fi
+
+      - name: Archive research
+        run: |
+          SLUG=$(echo "${{ inputs.topic }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | head -c 50)
+          mkdir -p memory/research
+          cat <<'RESEARCH' > "memory/research/$(date -u +%Y-%m-%d)-${SLUG}.md"
+          # Research: ${{ inputs.topic }}
+          _Researched on $(date -u +"%Y-%m-%d %H:%M UTC")_
+
+          ${{ steps.research.outputs.response }}
+          RESEARCH
+
+      - name: Persist
+        run: |
+          source scripts/git-persist.sh
+          update_state '.stats.researches_completed += 1 | .xp += 15'
+          persist_many "🔍 Research: ${{ inputs.topic }}" \
+            "memory/research/" "memory/state.json"

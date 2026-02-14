@@ -1,0 +1,98 @@
+# ============================================================================
+# Quest Master — Transforms issues into RPG quests
+# Triggers on new issues, gamifies them with XP and quest categories.
+# ============================================================================
+name: "⚔️ Quest Master"
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  quest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read agent state
+        id: state
+        run: |
+          STATE=$(cat memory/state.json 2>/dev/null || echo '{}')
+          echo "state<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$STATE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Generate quest posting
+        id: quest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          source scripts/utils.sh
+          source scripts/llm.sh
+
+          SYSTEM_PROMPT=$(cat templates/prompts/quest-master.md)
+
+          USER_MSG=$(cat <<MSG
+          New issue opened! Transform it into a quest:
+
+          Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+
+          Description:
+          ${{ github.event.issue.body }}
+
+          Current labels: ${{ join(github.event.issue.labels.*.name, ', ') }}
+
+          Agent State:
+          ${{ steps.state.outputs.state }}
+
+          Generate the Quest Posting now. Also output a JSON line at the very end with:
+          {"difficulty": "<easy|medium|hard|legendary>", "xp": <number>}
+          MSG
+          )
+
+          PROVIDER="${GITCLAW_PROVIDER:-anthropic}"
+          MODEL="${GITCLAW_MODEL:-claude-sonnet-4-5-20250929}"
+
+          RESPONSE=$(call_llm "$PROVIDER" "$MODEL" "$SYSTEM_PROMPT" "$USER_MSG" 1500)
+
+          # Extract the quest posting (everything except last JSON line)
+          QUEST_TEXT=$(echo "$RESPONSE" | sed '$d')
+          META=$(echo "$RESPONSE" | tail -1)
+
+          echo "quest<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$QUEST_TEXT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # Parse difficulty for labeling
+          DIFFICULTY=$(echo "$META" | jq -r '.difficulty // "medium"' 2>/dev/null || echo "medium")
+          XP=$(echo "$META" | jq -r '.xp // 25' 2>/dev/null || echo "25")
+          echo "difficulty=$DIFFICULTY" >> "$GITHUB_OUTPUT"
+          echo "xp=$XP" >> "$GITHUB_OUTPUT"
+
+      - name: Post quest and add labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Post the quest as a comment
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body='${{ steps.quest.outputs.quest }}'
+
+          # Add quest labels
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label "quest:new,xp:${{ steps.quest.outputs.xp }}" \
+            2>/dev/null || true
+
+      - name: Update state
+        run: |
+          source scripts/git-persist.sh
+          update_state '.stats.issues_triaged += 1 | .last_active = now | .xp += 5'
+          persist "memory/state.json" "⚔️ Quest posted for issue #${{ github.event.issue.number }}"

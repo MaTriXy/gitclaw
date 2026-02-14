@@ -1,0 +1,30 @@
+# GitClaw .gitignore
+# Keep it clean, keep it mean
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+
+# Temp files from agent runs
+tmp/
+*.tmp
+*.log
+
+# Never commit secrets (they go in GitHub Secrets)
+.secrets
+*.key
+*.pem

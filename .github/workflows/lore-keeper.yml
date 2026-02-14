@@ -1,0 +1,115 @@
+# ============================================================================
+# Lore Keeper — Chronicles repo knowledge with dramatic narrative
+# Triggered by /lore command via command-router.
+# ============================================================================
+name: "📜 Lore Keeper"
+
+on:
+  workflow_call:
+    inputs:
+      topic:
+        required: true
+        type: string
+      issue_number:
+        required: true
+        type: number
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Topic to chronicle"
+        required: true
+        type: string
+      issue_number:
+        description: "Source issue number"
+        required: false
+        default: "0"
+        type: string
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  chronicle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Gather existing lore
+        id: lore
+        run: |
+          # Read existing lore entries for context
+          EXISTING=""
+          if [ -d memory/lore ]; then
+            for f in memory/lore/*.md; do
+              [ -f "$f" ] || continue
+              TITLE=$(head -1 "$f" | sed 's/^#* *//')
+              EXISTING="$EXISTING\n- $TITLE ($(basename "$f"))"
+            done
+          fi
+          echo "existing<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$EXISTING" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Consult the Lore Keeper
+        id: chronicle
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          source scripts/utils.sh
+          source scripts/llm.sh
+
+          SYSTEM_PROMPT=$(cat templates/prompts/lore-keeper.md)
+
+          USER_MSG=$(cat <<MSG
+          Chronicle this topic: ${{ inputs.topic }}
+
+          Existing lore entries for continuity:
+          ${{ steps.lore.outputs.existing }}
+
+          Recent repo activity context:
+          $(gh api repos/${{ github.repository }}/events --jq '.[0:5] | map(.type)' 2>/dev/null || echo "none")
+
+          Create a lore entry worthy of the chronicles.
+          MSG
+          )
+
+          PROVIDER="${GITCLAW_PROVIDER:-anthropic}"
+          MODEL="${GITCLAW_MODEL:-claude-sonnet-4-5-20250929}"
+
+          RESPONSE=$(call_llm "$PROVIDER" "$MODEL" "$SYSTEM_PROMPT" "$USER_MSG" 1500)
+
+          echo "chronicle<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Post and archive
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE="${{ inputs.issue_number }}"
+
+          # Post to issue
+          if [ "$ISSUE" != "0" ] && [ -n "$ISSUE" ]; then
+            gh api repos/${{ github.repository }}/issues/$ISSUE/comments \
+              -f body='${{ steps.chronicle.outputs.chronicle }}'
+          fi
+
+          # Archive as lore file
+          SLUG=$(echo "${{ inputs.topic }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | head -c 50)
+          mkdir -p memory/lore
+          cat <<'LORE' > "memory/lore/$(date -u +%Y-%m-%d)-${SLUG}.md"
+          ${{ steps.chronicle.outputs.chronicle }}
+          LORE
+
+      - name: Persist
+        run: |
+          source scripts/git-persist.sh
+          update_state '.stats.lore_entries += 1 | .xp += 10'
+          persist_many "📜 Lore: ${{ inputs.topic }}" \
+            "memory/lore/" "memory/state.json"

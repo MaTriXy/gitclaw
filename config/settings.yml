@@ -1,0 +1,49 @@
+# ============================================================================
+# GitClaw Global Settings
+# ============================================================================
+
+# LLM Provider Configuration
+# API keys go in GitHub Secrets, NOT here!
+llm:
+  default_provider: "anthropic"         # "anthropic" or "openai"
+  default_model: "claude-sonnet-4-5-20250929"  # default model for all agents
+  fallback_model: "claude-haiku-4-5-20251001"  # cheaper model for simple tasks
+  max_tokens: 2048
+  temperature: 0.7
+
+# Git Persistence
+persistence:
+  auto_commit: true                     # Agents auto-commit their outputs
+  commit_prefix: "🧠"                  # Prefix for agent commits
+  branch: "main"                        # Branch to persist to
+
+# Rate Limiting (protect your free tier!)
+limits:
+  max_llm_calls_per_hour: 20           # Max API calls per hour
+  max_comments_per_issue: 5            # Don't spam issues
+  max_workflow_minutes_per_day: 30     # Stay under free tier
+  cooldown_seconds: 10                  # Min time between actions
+
+# Gamification
+gamification:
+  enabled: true
+  xp_per_issue_triaged: 10
+  xp_per_pr_reviewed: 25
+  xp_per_research: 15
+  xp_per_quest_complete: 50
+  xp_per_lore_entry: 10
+  xp_per_dream: 5
+  xp_per_fortune: 2
+
+# Feature Flags
+features:
+  morning_roast: true
+  quest_system: true
+  pr_review: true
+  research: true
+  content_gen: true
+  lore_keeper: true
+  dream_journal: true
+  fortune_cookie: true
+  hype_celebrations: true
+  roast_battle: true
