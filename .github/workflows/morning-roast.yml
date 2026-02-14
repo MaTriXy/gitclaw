@@ -95,19 +95,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Look for existing daily roast issue for today
           TODAY=$(date -u +"%Y-%m-%d")
-          EXISTING=$(gh issue list --label "gitclaw:roast" --state open --json number,title --jq ".[0].number // empty")
+
+          # Ensure the label exists (create it if missing)
+          gh label create "gitclaw:roast" --description "☕ Morning roast target" --color "6f4e37" 2>/dev/null || true
+
+          # Look for existing daily roast issue
+          EXISTING=$(gh issue list --label "gitclaw:roast" --state open --json number --jq ".[0].number // empty")
 
           if [ -n "$EXISTING" ]; then
             echo "issue_number=$EXISTING" >> "$GITHUB_OUTPUT"
           else
-            # Create new daily roast issue
-            NUMBER=$(gh issue create \
+            # Create new daily roast issue then add the label
+            URL=$(gh issue create \
               --title "☕ Morning Roast — $TODAY" \
-              --body "Daily briefing thread. GitClaw's Morning Roast will appear as a comment below." \
-              --label "gitclaw:roast" \
-              | grep -oP '\d+$')
+              --body "Daily briefing thread. GitClaw's Morning Roast will appear as a comment below.")
+            NUMBER=$(echo "$URL" | grep -o '[0-9]*$')
+            gh issue edit "$NUMBER" --add-label "gitclaw:roast"
             echo "issue_number=$NUMBER" >> "$GITHUB_OUTPUT"
           fi
 

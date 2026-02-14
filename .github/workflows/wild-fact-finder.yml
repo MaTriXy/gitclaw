@@ -75,11 +75,15 @@ jobs:
           ISSUE="${{ inputs.issue_number }}"
 
           if [ "$ISSUE" = "0" ] || [ -z "$ISSUE" ]; then
-            # Create a new issue for the research
-            gh issue create \
+            # Ensure the label exists
+            gh label create "gitclaw:research" --description "🔍 Research request" --color "1f6feb" 2>/dev/null || true
+
+            # Create a new issue for the research then label it
+            URL=$(gh issue create \
               --title "🔍 Research: ${{ inputs.topic }}" \
-              --body '${{ steps.research.outputs.response }}' \
-              --label "gitclaw:research"
+              --body '${{ steps.research.outputs.response }}')
+            NUMBER=$(echo "$URL" | grep -o '[0-9]*$')
+            gh issue edit "$NUMBER" --add-label "gitclaw:research"
           else
             # Post as comment on existing issue
             gh api repos/${{ github.repository }}/issues/$ISSUE/comments \

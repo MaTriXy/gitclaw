@@ -80,16 +80,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           MONTH=$(date -u +"%B %Y")
+
+          # Ensure the label exists
+          gh label create "gitclaw:fortune" --description "🔮 Fortune cookie" --color "bf5700" 2>/dev/null || true
+
           EXISTING=$(gh issue list --label "gitclaw:fortune" --state open --json number --jq '.[0].number // empty')
 
           if [ -n "$EXISTING" ]; then
             echo "number=$EXISTING" >> "$GITHUB_OUTPUT"
           else
-            NUMBER=$(gh issue create \
+            URL=$(gh issue create \
               --title "🔮 Fortune Cookies — $MONTH" \
-              --body "Your daily coding fortunes appear here. The cookie has spoken." \
-              --label "gitclaw:fortune" \
-              | grep -oP '\d+$')
+              --body "Your daily coding fortunes appear here. The cookie has spoken.")
+            NUMBER=$(echo "$URL" | grep -o '[0-9]*$')
+            gh issue edit "$NUMBER" --add-label "gitclaw:fortune"
             echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
           fi
 

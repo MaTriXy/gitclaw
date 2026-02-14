@@ -79,15 +79,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Ensure the label exists
+          gh label create "solana:monitor" --description "📡 Solana monitor" --color "9945FF" 2>/dev/null || true
+
           EXISTING=$(gh issue list --label "solana:monitor" --state open --json number --jq '.[0].number // empty')
           if [ -n "$EXISTING" ]; then
             echo "number=$EXISTING" >> "$GITHUB_OUTPUT"
           else
-            NUMBER=$(gh issue create \
+            URL=$(gh issue create \
               --title "📡 Solana Monitor — Active" \
-              --body "Solana monitoring reports will appear here as comments." \
-              --label "solana:monitor" \
-              | grep -oP '\d+$')
+              --body "Solana monitoring reports will appear here as comments.")
+            NUMBER=$(echo "$URL" | grep -o '[0-9]*$')
+            gh issue edit "$NUMBER" --add-label "solana:monitor"
             echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
           fi
 
