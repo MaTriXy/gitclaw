@@ -1,0 +1,83 @@
+# ============================================================================
+# GitClaw Solana Plugin Configuration
+# ============================================================================
+# This is a MODULAR PLUGIN. Solana features are optional.
+# Enable by setting enabled: true below, or by adding "solana" to agent.md.
+
+# Master switch
+enabled: false
+
+# Network (mainnet-beta or devnet)
+# IMPORTANT: Use devnet for testing to avoid real SOL costs
+network: "devnet"
+
+# Custom RPC endpoint (optional — falls back to public RPC)
+# For production use, get a free RPC from Helius, Alchemy, or QuickNode
+# Set via GitHub Secret: SOLANA_RPC_URL
+rpc_url: ""
+
+# Wallet monitoring
+monitoring:
+  enabled: false
+  # Wallets to track (add your own addresses)
+  wallets: []
+  #  - address: "YourWalletAddressHere"
+  #    label: "Main Wallet"
+  #  - address: "AnotherAddress"
+  #    label: "Trading Wallet"
+
+  # Check interval (cron expression)
+  schedule: "0 */6 * * *"  # Every 6 hours
+
+# Dexscreener integration
+dexscreener:
+  enabled: true  # Free API, no key needed
+  # Tokens to track for price alerts
+  watchlist: []
+  #  - symbol: "SOL"
+  #    alert_above: 200.0
+  #    alert_below: 100.0
+  #  - symbol: "BONK"
+  #    alert_change_pct: 20  # Alert on 20%+ moves
+
+# Jupiter integration
+jupiter:
+  enabled: true  # Free API, no key needed
+  default_slippage_bps: 50  # 0.5%
+
+# SBF Builder (Solana program compilation)
+builder:
+  enabled: false
+  # Anchor version for builds
+  anchor_version: "0.30.1"
+  # Solana CLI version
+  solana_version: "1.18.22"
+  # Deploy target (devnet only for safety!)
+  deploy_network: "devnet"
+  # Program directories to build
+  programs: []
+  #  - path: "programs/my-program"
+  #    name: "my_program"
+
+# Agent personality overlay for Solana responses
+personality:
+  style: "degen"  # "degen" | "analyst" | "normie"
+  styles:
+    degen:
+      vibe: "Full crypto degen energy — LFG, WAGMI, diamond hands"
+      examples:
+        - "Your SOL bag is looking THICC today ser"
+        - "This token is pumping harder than my heart rate during a rug pull"
+        - "NFA but this chart pattern is looking absolutely bussin"
+    analyst:
+      vibe: "Professional crypto analyst — data-driven, measured"
+      examples:
+        - "SOL/USD showing a bullish divergence on the 4H timeframe"
+        - "Liquidity depth suggests strong support at current levels"
+        - "On-chain metrics indicate accumulation phase"
+    normie:
+      vibe: "Casual crypto enthusiast — helpful but not over the top"
+      examples:
+        - "SOL is up 5% today, not bad!"
+        - "Here's your wallet balance — looking good"
+        - "This token has decent liquidity and volume"

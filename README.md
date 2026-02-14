@@ -31,6 +31,8 @@
 
 Your agent persists its memory by committing to the repo. Every thought is a git commit. The repo **is** the agent.
 
+**Optional Solana Plugin** — Enable on-chain data queries (Dexscreener, Jupiter, RPC), wallet monitoring, and verifiable SBF program builds. Just add `enable: solana` to `agent.md`.
+
 ## 🚀 Quick Start
 
 ### 1. Fork this repo
@@ -45,8 +47,9 @@ Go to **Settings → Secrets and variables → Actions** and add:
 |--------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes* | Your Anthropic API key |
 | `OPENAI_API_KEY` | No* | Your OpenAI API key (alternative) |
+| `SOLANA_RPC_URL` | No | Custom Solana RPC (Helius, Alchemy, etc.) |
 
-*At least one is required.
+*At least one LLM key is required.
 
 ### 3. Enable workflows
 
@@ -77,6 +80,16 @@ GitClaw runs 10 specialized AI agents, each with their own personality:
 | 🎉 **Hype Man** | Issue closed / PR merged | Over-the-top victory celebrations with XP |
 | 🔥 **Roast Battle** | `/roast <target>` | Brutally honest (but constructive!) code roasts |
 
+### Solana Plugin Agents (Optional)
+
+Enable with `enable: solana` in `agent.md`:
+
+| Agent | Trigger | What It Does |
+|-------|---------|-------------|
+| 🌐 **Solana Query** | `/sol <cmd>` | Dexscreener prices, RPC balances, Jupiter quotes |
+| 📡 **Solana Monitor** | Every 6 hours | Tracks wallet balances and token prices |
+| 🔨 **Solana Builder** | `/build-sbf` | Verifiable Solana program builds in Actions |
+
 ## 💬 Commands
 
 Post these in any issue comment:
@@ -87,6 +100,15 @@ Post these in any issue comment:
 /dream <description> — Log and interpret a dream
 /roast <file>        — Get a code roast (brutal but constructive)
 /help                — Show all commands
+```
+
+**Solana commands** (requires `enable: solana` in `agent.md`):
+```
+/sol price <token>           — Token price from Dexscreener
+/sol balance <address>       — Wallet SOL balance via RPC
+/sol quote <from> <to> <amt> — Jupiter v6 swap quote
+/sol network                 — Solana network status & TPS
+/build-sbf [path]            — Build Solana program (.so)
 ```
 
 ## 🧠 How It Works
@@ -180,12 +202,16 @@ gitclaw/
 │   ├── hype-man.yml           # 🎉 Celebrations
 │   ├── roast-battle.yml       # 🔥 Code roasts
 │   ├── heartbeat.yml          # 💓 Health & streaks
-│   └── setup.yml              # 🦞 One-time initialization
+│   ├── setup.yml              # 🦞 One-time initialization
+│   ├── solana-query.yml       # 🌐 Solana data queries (plugin)
+│   ├── solana-monitor.yml     # 📡 Wallet/price monitoring (plugin)
+│   └── solana-builder.yml     # 🔨 SBF program builds (plugin)
 ├── scripts/                   # Shell utilities
 │   ├── llm.sh                 # LLM API wrapper (Anthropic/OpenAI)
 │   ├── git-persist.sh         # Git commit-based persistence
 │   ├── github-api.sh          # GitHub API helpers
-│   └── utils.sh               # Shared utilities, XP system
+│   ├── utils.sh               # Shared utilities, XP system
+│   └── solana-tools.sh        # Solana API wrappers (plugin)
 ├── agents/                    # Python agent logic
 │   ├── common.py              # Shared client, state management
 │   ├── quest_master.py        # Issue classification & gamification
@@ -195,7 +221,10 @@ gitclaw/
 │   ├── lore_keeper.py         # Lore continuity & chronicling
 │   ├── dream_interpreter.py   # Dream pattern tracking
 │   ├── fortune_cookie.py      # Fortune generation
-│   └── meme_machine.py        # Content generation
+│   ├── meme_machine.py        # Content generation
+│   ├── solana_query.py        # Dex/RPC/Jupiter queries (plugin)
+│   ├── solana_monitor.py      # Wallet & price monitoring (plugin)
+│   └── solana_builder.py      # SBF verifiable builds (plugin)
 ├── templates/prompts/         # System prompts (the "soul" of each agent)
 ├── config/                    # Agent personality, settings, registry
 ├── memory/                    # Git-persisted agent memory
@@ -205,7 +234,14 @@ gitclaw/
 │   ├── quests/                # Quest tracking
 │   ├── research/              # Research archive
 │   ├── fortunes/              # Fortune archive
-│   └── roasts/                # Roast archive
+│   ├── roasts/                # Roast archive
+│   └── solana/                # Solana data (plugin)
+│       ├── prices/            # Price query history
+│       ├── wallets/           # Wallet snapshots
+│       ├── builds/            # Build reports
+│       └── alerts/            # Triggered alerts
+├── config/solana.yml          # Solana plugin config
+├── agent.md                   # Single-prompt agent setup
 └── README.md                  # You are here
 ```
 
@@ -235,6 +271,54 @@ XP is earned through:
 - Lore entries: **10 XP**
 - Dreams interpreted: **5 XP**
 - Fortunes dispensed: **2 XP**
+
+## 🌐 Solana Plugin
+
+Solana integration is a **modular, optional extension**. The core GitClaw repo remains general-purpose and Solana-agnostic. Non-Solana forks stay clean.
+
+### Enable Solana
+
+Add to your `agent.md`:
+```
+enable: solana
+solana-network: devnet
+solana-style: degen
+```
+
+### Available Integrations
+
+| Integration | API | What It Does |
+|-------------|-----|-------------|
+| **Dexscreener** | `GET /latest/dex/search`, `GET /latest/dex/pairs/{chain}/{pair}` | Token prices, volume, liquidity, pair data |
+| **Jupiter v6** | `GET /quote`, `POST /swap` | Swap quotes, route finding, price impact |
+| **Solana RPC** | `getBalance`, `getLatestBlockhash`, `getRecentPerformanceSamples` | Wallet balances, network status |
+| **SBF Builder** | `cargo-build-sbf`, Anchor CLI | Verifiable program compilation |
+
+### Wallet Monitoring
+
+Track wallet balances automatically:
+```
+enable: solana
+solana-wallet: YourAddress123... (Main Wallet)
+solana-wallet: AnotherAddr456... (Trading)
+solana-watch: SOL
+solana-watch: BONK
+```
+
+### Personality Styles
+
+| Style | Vibe |
+|-------|------|
+| `degen` | "Your SOL bag is looking THICC today ser" |
+| `analyst` | "SOL/USD showing bullish divergence on the 4H" |
+| `normie` | "SOL is up 5% today, not bad!" |
+
+### Important Notes
+
+- Uses **public RPC endpoints** by default (rate-limited). Set `SOLANA_RPC_URL` secret for production use.
+- **Devnet recommended** for testing. Never deploy programs to mainnet via Actions.
+- Dexscreener and Jupiter APIs are **free** — no API keys needed.
+- All data is **read-only** — GitClaw never signs transactions or moves funds.
 
 ## 💰 Cost & Limits
 

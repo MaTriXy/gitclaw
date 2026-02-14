@@ -81,6 +81,26 @@ jobs:
       issue_number: ${{ github.event.issue.number }}
     secrets: inherit
 
+  # ─── Solana Query Agent ──────────────────────────────────────────
+  sol:
+    needs: route
+    if: needs.route.outputs.command == 'sol'
+    uses: ./.github/workflows/solana-query.yml
+    with:
+      query_args: ${{ needs.route.outputs.args }}
+      issue_number: ${{ github.event.issue.number }}
+    secrets: inherit
+
+  # ─── Solana Builder Agent ──────────────────────────────────────
+  build-sbf:
+    needs: route
+    if: needs.route.outputs.command == 'build-sbf'
+    uses: ./.github/workflows/solana-builder.yml
+    with:
+      program_path: ${{ needs.route.outputs.args }}
+      issue_number: ${{ github.event.issue.number }}
+    secrets: inherit
+
   # ─── Help ──────────────────────────────────────────────────────────
   help:
     needs: route
@@ -102,12 +122,20 @@ jobs:
           | `/roast <file_or_topic>` | 🔥 Roast Battle | Get a brutally honest code roast |
           | `/help` | 🦞 GitClaw | Show this help message |
 
+          **Solana Plugin** (enable with `enable: solana` in agent.md):
+          | `/sol price <token>` | 🌐 Solana Query | Check token price via Dexscreener |
+          | `/sol balance <addr>` | 🌐 Solana Query | Check wallet SOL balance |
+          | `/sol quote <from> <to> <amt>` | 🌐 Solana Query | Get Jupiter swap quote |
+          | `/sol network` | 🌐 Solana Query | Solana network status |
+          | `/build-sbf [path]` | 🔨 Solana Builder | Build a Solana program |
+
           **Automatic Agents** (no command needed):
           - ☕ **Morning Roast** — Daily issue digest (weekdays 9 AM UTC)
           - ⚔️ **Quest Master** — Auto-gamifies new issues
           - 🃏 **Code Jester** — Auto-reviews PRs
           - 🔮 **Fortune Cookie** — Daily coding wisdom (8 AM UTC)
           - 🎉 **Hype Man** — Celebrates closed issues/merged PRs
+          - 📡 **Solana Monitor** — Wallet & price monitoring (if enabled)
 
           *— 🦞 GitClaw, at your service*
           HELP

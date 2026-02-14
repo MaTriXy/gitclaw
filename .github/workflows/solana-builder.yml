@@ -1,0 +1,117 @@
+# ============================================================================
+# Solana Builder — Verifiable Solana program builds
+# MODULAR PLUGIN: Only runs when SBF builder is enabled.
+# Compiles Rust → .so using cargo-build-sbf or Anchor.
+# ============================================================================
+name: "🔨 Solana Builder"
+
+on:
+  workflow_call:
+    inputs:
+      program_path:
+        required: false
+        type: string
+        default: "."
+      issue_number:
+        required: true
+        type: number
+  workflow_dispatch:
+    inputs:
+      program_path:
+        description: "Path to Solana program (or . to auto-detect)"
+        required: false
+        default: "."
+        type: string
+      issue_number:
+        description: "Issue number for build report"
+        required: false
+        default: "0"
+        type: string
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check SBF builder is enabled
+        id: check
+        run: |
+          if grep -qi "solana-builder\|build-sbf" agent.md 2>/dev/null; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Solana CLI
+        if: steps.check.outputs.enabled == 'true'
+        run: |
+          SOLANA_VERSION="${{ vars.SOLANA_VERSION || '1.18.22' }}"
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor (if needed)
+        if: steps.check.outputs.enabled == 'true'
+        run: |
+          # Check if any program uses Anchor
+          if grep -rq "anchor-lang" --include="Cargo.toml" . 2>/dev/null; then
+            ANCHOR_VERSION="${{ vars.ANCHOR_VERSION || '0.30.1' }}"
+            cargo install --git https://github.com/coral-xyz/anchor avm --force 2>/dev/null || true
+            avm install "$ANCHOR_VERSION" 2>/dev/null || true
+            avm use "$ANCHOR_VERSION" 2>/dev/null || true
+          fi
+
+      - name: Set up Python
+        if: steps.check.outputs.enabled == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Rust toolchain
+        if: steps.check.outputs.enabled == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build program
+        if: steps.check.outputs.enabled == 'true'
+        working-directory: agents
+        env:
+          PROGRAM_PATH: ${{ inputs.program_path }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 solana_builder.py
+
+      - name: Not enabled response
+        if: steps.check.outputs.enabled == 'false' && inputs.issue_number != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/comments \
+            -f body="## 🔨 Solana Builder Not Enabled
+
+          To use the SBF builder, add this to your \`agent.md\`:
+          \`\`\`
+          enable: solana
+          enable: solana-builder
+          \`\`\`
+
+          — 🔨 *Solana Builder*"
+
+      - name: Persist
+        if: steps.check.outputs.enabled == 'true'
+        run: |
+          source scripts/git-persist.sh
+          persist_many "🔨 Solana build: ${{ inputs.program_path }}" \
+            "memory/solana/builds/" "memory/state.json"

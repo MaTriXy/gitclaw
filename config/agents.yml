@@ -92,6 +92,38 @@ agents:
     prompt_file: "templates/prompts/roast-battle.md"
     enabled: true
 
+# ── Solana Plugin Agents (optional) ──────────────────────────────────────
+
+  solana_query:
+    name: "Solana Query"
+    emoji: "🌐"
+    description: "On-chain data from Dexscreener, Jupiter, and Solana RPC"
+    trigger: "issue_comment"
+    command: "/sol"
+    prompt_file: "templates/prompts/solana-query.md"
+    plugin: "solana"
+    enabled: false  # Enable via agent.md
+
+  solana_monitor:
+    name: "Solana Monitor"
+    emoji: "📡"
+    description: "Scheduled wallet balance and token price monitoring"
+    trigger: "schedule"
+    schedule: "0 */6 * * *"
+    prompt_file: "templates/prompts/solana-monitor.md"
+    plugin: "solana"
+    enabled: false
+
+  solana_builder:
+    name: "Solana Builder"
+    emoji: "🔨"
+    description: "Verifiable Solana program builds via cargo-build-sbf / Anchor"
+    trigger: "issue_comment"
+    command: "/build-sbf"
+    prompt_file: "templates/prompts/solana-builder.md"
+    plugin: "solana"
+    enabled: false
+
 # Global settings for all agents
 defaults:
   provider: "anthropic"

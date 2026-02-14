@@ -16,7 +16,10 @@
     "fortunes_dispensed": 0,
     "roasts_delivered": 0,
     "comments_posted": 0,
-    "commits_made": 0
+    "commits_made": 0,
+    "solana_queries": 0,
+    "solana_monitors": 0,
+    "solana_builds": 0
   },
   "achievements": [],
   "last_active": null,

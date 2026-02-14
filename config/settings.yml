@@ -47,3 +47,10 @@ features:
   fortune_cookie: true
   hype_celebrations: true
   roast_battle: true
+
+  # Solana Plugin (optional — enable via agent.md)
+  solana:
+    enabled: false               # Master switch for Solana features
+    query: false                 # /sol price, balance, quote, network
+    monitor: false               # Scheduled wallet/price monitoring
+    builder: false               # SBF verifiable builds
