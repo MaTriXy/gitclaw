@@ -71,7 +71,7 @@ jobs:
           )
 
           PROVIDER="${GITCLAW_PROVIDER:-anthropic}"
-          MODEL="${GITCLAW_MODEL:-claude-sonnet-4-5-20250929}"
+          MODEL="${GITCLAW_MODEL:-claude-haiku-4-5-20251001}"
 
           RESPONSE=$(call_llm "$PROVIDER" "$MODEL" "$SYSTEM_PROMPT" "$USER_MSG" 2000)
 

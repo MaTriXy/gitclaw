@@ -13,7 +13,7 @@ source "$SCRIPT_DIR/utils.sh"
 # call_llm <provider> <model> <system_prompt> <user_message> [max_tokens]
 #
 #   provider:      "anthropic" | "openai"
-#   model:         e.g. "claude-sonnet-4-5-20250929" or "gpt-4o"
+#   model:         e.g. "claude-haiku-4-5-20251001" or "gpt-4o"
 #   system_prompt: system-level instructions (can be a file path or string)
 #   user_message:  the actual prompt
 #   max_tokens:    optional, default 2048

@@ -79,7 +79,7 @@ Set environment variables in your workflow files or in `config/settings.yml`:
 ```yaml
 llm:
   default_provider: "anthropic"
-  default_model: "claude-sonnet-4-5-20250929"
+  default_model: "claude-haiku-4-5-20251001"
   fallback_model: "claude-haiku-4-5-20251001"
 ```
 

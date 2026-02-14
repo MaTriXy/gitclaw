@@ -36,7 +36,7 @@ def call_llm(
     import urllib.request
 
     provider = provider or os.environ.get("GITCLAW_PROVIDER", "anthropic")
-    model = model or os.environ.get("GITCLAW_MODEL", "claude-sonnet-4-5-20250929")
+    model = model or os.environ.get("GITCLAW_MODEL", "claude-haiku-4-5-20251001")
 
     if provider == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
