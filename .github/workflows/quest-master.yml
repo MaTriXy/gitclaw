@@ -35,6 +35,11 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
+          AGENT_STATE: ${{ steps.state.outputs.state }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
@@ -44,15 +49,15 @@ jobs:
           USER_MSG=$(cat <<MSG
           New issue opened! Transform it into a quest:
 
-          Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+          Issue #$ISSUE_NUMBER: $ISSUE_TITLE
 
           Description:
-          ${{ github.event.issue.body }}
+          $ISSUE_BODY
 
-          Current labels: ${{ join(github.event.issue.labels.*.name, ', ') }}
+          Current labels: $ISSUE_LABELS
 
           Agent State:
-          ${{ steps.state.outputs.state }}
+          $AGENT_STATE
 
           Generate the Quest Posting now. Also output a JSON line at the very end with:
           {"difficulty": "<easy|medium|hard|legendary>", "xp": <number>}
@@ -81,18 +86,20 @@ jobs:
       - name: Post quest and add labels
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QUEST_BODY: ${{ steps.quest.outputs.quest }}
+          QUEST_XP: ${{ steps.quest.outputs.xp }}
         run: |
           # Post the quest as a comment
           gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
-            -f body='${{ steps.quest.outputs.quest }}'
+            -f body="$QUEST_BODY"
 
           # Ensure quest labels exist
           gh label create "quest:new" --description "🟢 New quest awaits" --color "2ea44f" 2>/dev/null || true
-          gh label create "xp:${{ steps.quest.outputs.xp }}" --description "⭐ XP reward" --color "e3b341" 2>/dev/null || true
+          gh label create "xp:${QUEST_XP}" --description "⭐ XP reward" --color "e3b341" 2>/dev/null || true
 
           # Add quest labels
           gh issue edit ${{ github.event.issue.number }} \
-            --add-label "quest:new,xp:${{ steps.quest.outputs.xp }}" \
+            --add-label "quest:new,xp:${QUEST_XP}" \
             2>/dev/null || true
 
       - name: Update state

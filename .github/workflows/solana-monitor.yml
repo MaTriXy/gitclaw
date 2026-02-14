@@ -31,10 +31,11 @@ jobs:
 
       - name: Check Solana monitoring is enabled
         id: check
+        env:
+          INPUT_FORCE: ${{ inputs.force || 'false' }}
         run: |
           source scripts/solana-tools.sh
-          FORCE="${{ inputs.force || 'false' }}"
-          if check_solana_enabled || [ "$FORCE" = "true" ]; then
+          if check_solana_enabled || [ "$INPUT_FORCE" = "true" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
@@ -54,7 +55,7 @@ jobs:
           # Extract wallet addresses from agent.md
           WALLETS="[]"
           if [ -f agent.md ]; then
-            WALLETS=$(grep -oP 'solana-wallet:\s*\K.*' agent.md 2>/dev/null | \
+            WALLETS=$(sed -n 's/^solana-wallet:[[:space:]]*//p' agent.md 2>/dev/null | \
               while IFS= read -r line; do
                 ADDR=$(echo "$line" | awk '{print $1}')
                 LABEL=$(echo "$line" | sed 's/^[^ ]* *//' | tr -d '()')
@@ -66,7 +67,7 @@ jobs:
           # Extract watchlist tokens
           TOKENS="SOL"
           if [ -f agent.md ]; then
-            CUSTOM=$(grep -oP 'solana-watch:\s*\K\w+' agent.md 2>/dev/null | paste -sd ',' || echo "")
+            CUSTOM=$(sed -n 's/^solana-watch:[[:space:]]*//p' agent.md 2>/dev/null | paste -sd ',' || echo "")
             if [ -n "$CUSTOM" ]; then
               TOKENS="$CUSTOM"
             fi

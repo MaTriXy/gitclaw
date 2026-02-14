@@ -45,6 +45,8 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          HIST_RECENT: ${{ steps.history.outputs.recent }}
+          HIST_STATE: ${{ steps.history.outputs.state }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
@@ -56,10 +58,10 @@ jobs:
           Day of week: $(date -u +"%A")
 
           Recent fortunes (avoid repeating):
-          ${{ steps.history.outputs.recent }}
+          $HIST_RECENT
 
           Agent state:
-          ${{ steps.history.outputs.state }}
+          $HIST_STATE
 
           Generate today's fortune cookie.
           MSG
@@ -100,11 +102,14 @@ jobs:
       - name: Deliver the fortune
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORTUNE_BODY: ${{ steps.fortune.outputs.fortune }}
         run: |
           gh api repos/${{ github.repository }}/issues/${{ steps.issue.outputs.number }}/comments \
-            -f body='${{ steps.fortune.outputs.fortune }}'
+            -f body="$FORTUNE_BODY"
 
       - name: Archive fortune
+        env:
+          FORTUNE_CONTENT: ${{ steps.fortune.outputs.fortune }}
         run: |
           MONTH=$(date -u +"%Y-%m")
           TODAY=$(date -u +"%Y-%m-%d")
@@ -115,7 +120,7 @@ jobs:
             echo "---"
             echo "### $TODAY"
             echo ""
-            echo '${{ steps.fortune.outputs.fortune }}'
+            printf '%s\n' "$FORTUNE_CONTENT"
           } >> "memory/fortunes/${MONTH}.md"
 
       - name: Persist

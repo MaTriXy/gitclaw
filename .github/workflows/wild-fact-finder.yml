@@ -12,7 +12,7 @@ on:
         type: string
       issue_number:
         required: true
-        type: number
+        type: string
   workflow_dispatch:
     inputs:
       topic:
@@ -44,15 +44,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          INPUT_TOPIC: ${{ inputs.topic }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
 
-          TOPIC="${{ inputs.topic }}"
           SYSTEM_PROMPT=$(cat templates/prompts/wild-fact-finder.md)
 
           USER_MSG=$(cat <<MSG
-          Research topic: $TOPIC
+          Research topic: $INPUT_TOPIC
 
           Provide a thorough, entertaining research brief on this topic.
           Include key findings, a wild card fact, a fun tangent, and a tech connection.
@@ -71,8 +71,11 @@ jobs:
       - name: Post findings
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESEARCH_BODY: ${{ steps.research.outputs.response }}
+          INPUT_TOPIC: ${{ inputs.topic }}
+          ISSUE_NUM: ${{ inputs.issue_number }}
         run: |
-          ISSUE="${{ inputs.issue_number }}"
+          ISSUE="$ISSUE_NUM"
 
           if [ "$ISSUE" = "0" ] || [ -z "$ISSUE" ]; then
             # Ensure the label exists
@@ -80,30 +83,35 @@ jobs:
 
             # Create a new issue for the research then label it
             URL=$(gh issue create \
-              --title "🔍 Research: ${{ inputs.topic }}" \
-              --body '${{ steps.research.outputs.response }}')
+              --title "🔍 Research: $INPUT_TOPIC" \
+              --body "$RESEARCH_BODY")
             NUMBER=$(echo "$URL" | grep -o '[0-9]*$')
             gh issue edit "$NUMBER" --add-label "gitclaw:research"
           else
             # Post as comment on existing issue
             gh api repos/${{ github.repository }}/issues/$ISSUE/comments \
-              -f body='${{ steps.research.outputs.response }}'
+              -f body="$RESEARCH_BODY"
           fi
 
       - name: Archive research
+        env:
+          RESEARCH_CONTENT: ${{ steps.research.outputs.response }}
+          INPUT_TOPIC: ${{ inputs.topic }}
         run: |
-          SLUG=$(echo "${{ inputs.topic }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | head -c 50)
+          SLUG=$(echo "$INPUT_TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | head -c 50)
           mkdir -p memory/research
-          cat <<'RESEARCH' > "memory/research/$(date -u +%Y-%m-%d)-${SLUG}.md"
-          # Research: ${{ inputs.topic }}
-          _Researched on $(date -u +"%Y-%m-%d %H:%M UTC")_
-
-          ${{ steps.research.outputs.response }}
-          RESEARCH
+          {
+            echo "# Research: $INPUT_TOPIC"
+            echo "_Researched on $(date -u +"%Y-%m-%d %H:%M UTC")_"
+            echo ""
+            printf '%s\n' "$RESEARCH_CONTENT"
+          } > "memory/research/$(date -u +%Y-%m-%d)-${SLUG}.md"
 
       - name: Persist
+        env:
+          INPUT_TOPIC: ${{ inputs.topic }}
         run: |
           source scripts/git-persist.sh
           update_state '.stats.researches_completed += 1 | .xp += 15'
-          persist_many "🔍 Research: ${{ inputs.topic }}" \
+          persist_many "🔍 Research: $INPUT_TOPIC" \
             "memory/research/" "memory/state.json"

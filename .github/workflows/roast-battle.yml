@@ -12,7 +12,7 @@ on:
         type: string
       issue_number:
         required: true
-        type: number
+        type: string
   workflow_dispatch:
     inputs:
       target:
@@ -41,13 +41,14 @@ jobs:
 
       - name: Gather roast material
         id: material
+        env:
+          ROAST_TARGET: ${{ inputs.target }}
         run: |
-          TARGET="${{ inputs.target }}"
           CODE_CONTENT=""
 
           # Check if the target is a file path
-          if [ -f "$TARGET" ]; then
-            CODE_CONTENT=$(head -100 "$TARGET" 2>/dev/null || echo "File not readable")
+          if [ -f "$ROAST_TARGET" ]; then
+            CODE_CONTENT=$(head -100 "$ROAST_TARGET" 2>/dev/null || echo "File not readable")
             echo "is_file=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_file=false" >> "$GITHUB_OUTPUT"
@@ -62,6 +63,10 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ROAST_TARGET: ${{ inputs.target }}
+          IS_FILE: ${{ steps.material.outputs.is_file }}
+          CODE_CONTENT: ${{ steps.material.outputs.code }}
+          ROAST_REQUESTER: ${{ github.actor }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
@@ -69,14 +74,14 @@ jobs:
           SYSTEM_PROMPT=$(cat templates/prompts/roast-battle.md)
 
           USER_MSG=$(cat <<MSG
-          Roast target: ${{ inputs.target }}
+          Roast target: $ROAST_TARGET
 
-          Is it a file? ${{ steps.material.outputs.is_file }}
+          Is it a file? $IS_FILE
 
           Code content (if file):
-          ${{ steps.material.outputs.code }}
+          $CODE_CONTENT
 
-          Roast requested by: ${{ github.actor }}
+          Roast requested by: $ROAST_REQUESTER
 
           Deliver the roast!
           MSG
@@ -94,22 +99,27 @@ jobs:
       - name: Deliver the roast
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ROAST_BODY: ${{ steps.roast.outputs.roast }}
+          ISSUE_NUM: ${{ inputs.issue_number }}
         run: |
-          ISSUE="${{ inputs.issue_number }}"
+          ISSUE="$ISSUE_NUM"
 
           if [ "$ISSUE" != "0" ] && [ -n "$ISSUE" ]; then
             gh api repos/${{ github.repository }}/issues/$ISSUE/comments \
-              -f body='${{ steps.roast.outputs.roast }}'
+              -f body="$ROAST_BODY"
           fi
 
       - name: Archive and persist
+        env:
+          ROAST_CONTENT: ${{ steps.roast.outputs.roast }}
+          ROAST_TARGET: ${{ inputs.target }}
         run: |
           source scripts/git-persist.sh
           update_state '.stats.roasts_delivered += 1 | .xp += 10'
 
-          SLUG=$(echo "${{ inputs.target }}" | tr '[:upper:]' '[:lower:]' | tr ' /' '-' | tr -cd 'a-z0-9-' | head -c 50)
+          SLUG=$(echo "$ROAST_TARGET" | tr '[:upper:]' '[:lower:]' | tr ' /' '-' | tr -cd 'a-z0-9-' | head -c 50)
           mkdir -p memory/roasts
-          echo '${{ steps.roast.outputs.roast }}' > "memory/roasts/$(date -u +%Y-%m-%d)-roast-${SLUG}.md"
+          printf '%s\n' "$ROAST_CONTENT" > "memory/roasts/$(date -u +%Y-%m-%d)-roast-${SLUG}.md"
 
-          persist_many "🔥 Roast delivered: ${{ inputs.target }}" \
+          persist_many "🔥 Roast delivered: $ROAST_TARGET" \
             "memory/roasts/" "memory/state.json"

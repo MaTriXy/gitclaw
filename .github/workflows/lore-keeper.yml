@@ -12,7 +12,7 @@ on:
         type: string
       issue_number:
         required: true
-        type: number
+        type: string
   workflow_dispatch:
     inputs:
       topic:
@@ -60,20 +60,25 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TOPIC: ${{ inputs.topic }}
+          LORE_EXISTING: ${{ steps.lore.outputs.existing }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
 
           SYSTEM_PROMPT=$(cat templates/prompts/lore-keeper.md)
 
+          REPO_EVENTS=$(gh api repos/${{ github.repository }}/events --jq '.[0:5] | map(.type)' 2>/dev/null || echo "none")
+
           USER_MSG=$(cat <<MSG
-          Chronicle this topic: ${{ inputs.topic }}
+          Chronicle this topic: $INPUT_TOPIC
 
           Existing lore entries for continuity:
-          ${{ steps.lore.outputs.existing }}
+          $LORE_EXISTING
 
           Recent repo activity context:
-          $(gh api repos/${{ github.repository }}/events --jq '.[0:5] | map(.type)' 2>/dev/null || echo "none")
+          $REPO_EVENTS
 
           Create a lore entry worthy of the chronicles.
           MSG
@@ -91,25 +96,28 @@ jobs:
       - name: Post and archive
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHRONICLE_BODY: ${{ steps.chronicle.outputs.chronicle }}
+          INPUT_TOPIC: ${{ inputs.topic }}
+          ISSUE_NUM: ${{ inputs.issue_number }}
         run: |
-          ISSUE="${{ inputs.issue_number }}"
+          ISSUE="$ISSUE_NUM"
 
           # Post to issue
           if [ "$ISSUE" != "0" ] && [ -n "$ISSUE" ]; then
             gh api repos/${{ github.repository }}/issues/$ISSUE/comments \
-              -f body='${{ steps.chronicle.outputs.chronicle }}'
+              -f body="$CHRONICLE_BODY"
           fi
 
           # Archive as lore file
-          SLUG=$(echo "${{ inputs.topic }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | head -c 50)
+          SLUG=$(echo "$INPUT_TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | head -c 50)
           mkdir -p memory/lore
-          cat <<'LORE' > "memory/lore/$(date -u +%Y-%m-%d)-${SLUG}.md"
-          ${{ steps.chronicle.outputs.chronicle }}
-          LORE
+          printf '%s\n' "$CHRONICLE_BODY" > "memory/lore/$(date -u +%Y-%m-%d)-${SLUG}.md"
 
       - name: Persist
+        env:
+          INPUT_TOPIC: ${{ inputs.topic }}
         run: |
           source scripts/git-persist.sh
           update_state '.stats.lore_entries += 1 | .xp += 10'
-          persist_many "📜 Lore: ${{ inputs.topic }}" \
+          persist_many "📜 Lore: $INPUT_TOPIC" \
             "memory/lore/" "memory/state.json"

@@ -13,7 +13,7 @@ on:
         type: string
       issue_number:
         required: true
-        type: number
+        type: string
   workflow_dispatch:
     inputs:
       query_args:
@@ -78,8 +78,9 @@ jobs:
         if: steps.check.outputs.enabled == 'false' && inputs.issue_number != '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUM: ${{ inputs.issue_number }}
         run: |
-          gh api repos/${{ github.repository }}/issues/${{ inputs.issue_number }}/comments \
+          gh api repos/${{ github.repository }}/issues/$ISSUE_NUM/comments \
             -f body="## 🌐 Solana Plugin Not Enabled
 
           To use Solana features, add this to your \`agent.md\`:
@@ -93,7 +94,9 @@ jobs:
 
       - name: Persist
         if: steps.check.outputs.enabled == 'true'
+        env:
+          QUERY_ARGS: ${{ inputs.query_args }}
         run: |
           source scripts/git-persist.sh
-          persist_many "🌐 Solana query: ${{ inputs.query_args }}" \
+          persist_many "🌐 Solana query: $QUERY_ARGS" \
             "memory/solana/" "memory/state.json"

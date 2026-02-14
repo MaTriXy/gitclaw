@@ -56,6 +56,9 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CTX_ISSUES: ${{ steps.context.outputs.issues }}
+          CTX_ACTIVITY: ${{ steps.context.outputs.activity }}
+          CTX_STATE: ${{ steps.context.outputs.state }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
@@ -68,13 +71,13 @@ jobs:
           Greeting: $(time_greeting)
 
           Open Issues:
-          ${{ steps.context.outputs.issues }}
+          $CTX_ISSUES
 
           Recent Activity:
-          ${{ steps.context.outputs.activity }}
+          $CTX_ACTIVITY
 
           Agent State:
-          ${{ steps.context.outputs.state }}
+          $CTX_STATE
 
           Generate the Morning Roast briefing now.
           MSG
@@ -118,17 +121,18 @@ jobs:
       - name: Serve the roast
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ROAST_BODY: ${{ steps.roast.outputs.response }}
         run: |
           gh api repos/${{ github.repository }}/issues/${{ steps.issue.outputs.issue_number }}/comments \
-            -f body="${{ steps.roast.outputs.response }}"
+            -f body="$ROAST_BODY"
 
       - name: Archive roast
+        env:
+          ROAST_CONTENT: ${{ steps.roast.outputs.response }}
         run: |
           TODAY=$(date -u +"%Y-%m-%d")
           mkdir -p memory/roasts
-          cat <<'ROAST' > "memory/roasts/$TODAY.md"
-          ${{ steps.roast.outputs.response }}
-          ROAST
+          printf '%s\n' "$ROAST_CONTENT" > "memory/roasts/$TODAY.md"
 
       - name: Persist to memory
         run: |

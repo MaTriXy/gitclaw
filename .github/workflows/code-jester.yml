@@ -46,6 +46,11 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          DIFF_FILES: ${{ steps.diff.outputs.files }}
+          DIFF_CONTENT: ${{ steps.diff.outputs.diff }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
@@ -55,16 +60,16 @@ jobs:
           USER_MSG=$(cat <<MSG
           Review this PR:
 
-          PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+          PR #$PR_NUMBER: $PR_TITLE
 
           Description:
-          ${{ github.event.pull_request.body }}
+          $PR_BODY
 
           Changed files:
-          ${{ steps.diff.outputs.files }}
+          $DIFF_FILES
 
           Diff (truncated):
-          ${{ steps.diff.outputs.diff }}
+          $DIFF_CONTENT
 
           Deliver your Jester's Review now.
           MSG
@@ -82,7 +87,8 @@ jobs:
       - name: Post the review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEW_BODY: ${{ steps.review.outputs.review }}
         run: |
           gh pr review ${{ github.event.pull_request.number }} \
             --comment \
-            --body '${{ steps.review.outputs.review }}'
+            --body "$REVIEW_BODY"

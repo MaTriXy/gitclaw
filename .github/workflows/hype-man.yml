@@ -42,22 +42,30 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_USER: ${{ github.event.issue.user.login }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_USER: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AGENT_STATE: ${{ steps.state.outputs.state }}
         run: |
           source scripts/utils.sh
           source scripts/llm.sh
 
           SYSTEM_PROMPT=$(cat templates/prompts/hype-man.md)
 
-          if [ "${{ github.event_name }}" = "issues" ]; then
+          if [ "$EVENT_NAME" = "issues" ]; then
             EVENT_TYPE="issue_closed"
-            TITLE="${{ github.event.issue.title }}"
-            CONTRIBUTOR="${{ github.event.issue.user.login }}"
-            NUMBER="${{ github.event.issue.number }}"
+            TITLE="$ISSUE_TITLE"
+            CONTRIBUTOR="$ISSUE_USER"
+            NUMBER="$ISSUE_NUMBER"
           else
             EVENT_TYPE="pr_merged"
-            TITLE="${{ github.event.pull_request.title }}"
-            CONTRIBUTOR="${{ github.event.pull_request.user.login }}"
-            NUMBER="${{ github.event.pull_request.number }}"
+            TITLE="$PR_TITLE"
+            CONTRIBUTOR="$PR_USER"
+            NUMBER="$PR_NUMBER"
           fi
 
           USER_MSG=$(cat <<MSG
@@ -67,7 +75,7 @@ jobs:
           Number: #$NUMBER
 
           Agent State:
-          ${{ steps.state.outputs.state }}
+          $AGENT_STATE
 
           Generate a celebration worthy of this achievement!
           MSG
@@ -85,21 +93,27 @@ jobs:
       - name: Post celebration
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HYPE_BODY: ${{ steps.hype.outputs.hype }}
         run: |
-          if [ "${{ github.event_name }}" = "issues" ]; then
-            NUMBER="${{ github.event.issue.number }}"
+          if [ "$EVENT_NAME" = "issues" ]; then
+            NUMBER="$ISSUE_NUMBER"
           else
-            NUMBER="${{ github.event.pull_request.number }}"
+            NUMBER="$PR_NUMBER"
           fi
 
           gh api repos/${{ github.repository }}/issues/$NUMBER/comments \
-            -f body='${{ steps.hype.outputs.hype }}'
+            -f body="$HYPE_BODY"
 
       - name: Update XP
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           source scripts/git-persist.sh
 
-          if [ "${{ github.event_name }}" = "issues" ]; then
+          if [ "$EVENT_NAME" = "issues" ]; then
             update_state '.stats.issues_triaged += 1 | .xp += 10'
           else
             update_state '.stats.prs_reviewed += 1 | .xp += 25'

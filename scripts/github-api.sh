@@ -219,7 +219,7 @@ ensure_labels() {
         --arg color "$color" \
         '{name: $name, description: $desc, color: $color}')" > /dev/null 2>&1 || true
 
-    ((i++))
+    i=$((i + 1))
   done
 
   log_info "GitClaw labels ensured"
