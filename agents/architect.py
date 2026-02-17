@@ -305,17 +305,17 @@ def apply_proposal(proposal: dict) -> tuple:
     # Configure git identity
     subprocess.run(
         ["git", "config", "user.name", "gitclaw[bot]"],
-        check=True, cwd=str(REPO_ROOT),
+        check=True, cwd=str(REPO_ROOT), stdout=sys.stderr,
     )
     subprocess.run(
         ["git", "config", "user.email", "gitclaw[bot]@users.noreply.github.com"],
-        check=True, cwd=str(REPO_ROOT),
+        check=True, cwd=str(REPO_ROOT), stdout=sys.stderr,
     )
 
     # Create and switch to new branch
     subprocess.run(
         ["git", "checkout", "-b", branch],
-        check=True, cwd=str(REPO_ROOT),
+        check=True, cwd=str(REPO_ROOT), stdout=sys.stderr, stderr=sys.stderr,
     )
 
     # Write each file
@@ -325,7 +325,7 @@ def apply_proposal(proposal: dict) -> tuple:
         file_path.write_text(f["content"])
         subprocess.run(
             ["git", "add", f["path"]],
-            check=True, cwd=str(REPO_ROOT),
+            check=True, cwd=str(REPO_ROOT), stdout=sys.stderr,
         )
         log("Architect", f"Wrote: {f['path']} ({f.get('reason', 'no reason given')})")
 
@@ -334,13 +334,13 @@ def apply_proposal(proposal: dict) -> tuple:
     subprocess.run(
         ["git", "commit", "-m", commit_msg,
          "--author", "gitclaw[bot] <gitclaw[bot]@users.noreply.github.com>"],
-        check=True, cwd=str(REPO_ROOT),
+        check=True, cwd=str(REPO_ROOT), stdout=sys.stderr, stderr=sys.stderr,
     )
 
     # Push branch
     subprocess.run(
         ["git", "push", "origin", branch],
-        check=True, cwd=str(REPO_ROOT),
+        check=True, cwd=str(REPO_ROOT), stdout=sys.stderr, stderr=sys.stderr,
     )
 
     # Build PR body
@@ -386,7 +386,7 @@ def apply_proposal(proposal: dict) -> tuple:
     # Switch back to main
     subprocess.run(
         ["git", "checkout", "main"],
-        check=True, cwd=str(REPO_ROOT),
+        check=True, cwd=str(REPO_ROOT), stdout=sys.stderr, stderr=sys.stderr,
     )
 
     return pr_num, branch
