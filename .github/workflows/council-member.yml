@@ -84,12 +84,13 @@ jobs:
             printf '%s\n' "$REVIEW_CONTENT"
           } > "memory/council/$(date -u +%Y-%m-%d)-pr${PR_NUM}-${COUNCIL_PERSONA}.md"
 
-      - name: Persist
+      - name: Persist review
         env:
           COUNCIL_PERSONA: ${{ inputs.persona }}
           PR_NUM: ${{ inputs.pr_number }}
         run: |
           source scripts/git-persist.sh
-          update_state '.stats.council_reviews += 1 | .xp += 10'
-          persist_many "⚖️ Council: $COUNCIL_PERSONA reviewed PR #$PR_NUM" \
-            "memory/council/" "memory/state.json"
+          # Only persist the review markdown — state.json is updated
+          # in bulk by the tally job to avoid parallel write conflicts
+          persist "memory/council/$(date -u +%Y-%m-%d)-pr${PR_NUM}-${COUNCIL_PERSONA}.md" \
+            "⚖️ Council: $COUNCIL_PERSONA reviewed PR #$PR_NUM"

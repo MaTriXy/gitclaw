@@ -240,11 +240,14 @@ jobs:
             echo "Final verdict recorded."
           } > "memory/council/$(date -u +%Y-%m-%d)-pr${PR_NUM}-tally.md"
 
-      - name: Persist
+      - name: Persist tally and all review stats
         env:
           PR_NUM: ${{ needs.context.outputs.pr_number }}
         run: |
           source scripts/git-persist.sh
-          update_state '.stats.council_tallies += 1 | .xp += 20'
-          persist_many "⚖️ Council tally: PR #$PR_NUM" \
+          # Count how many council review files were created for this PR
+          REVIEW_COUNT=$(ls memory/council/*-pr${PR_NUM}-*.md 2>/dev/null | grep -cv tally || echo 0)
+          # Bulk update: all council review XP + tally XP in one commit
+          update_state ".stats.council_reviews += $REVIEW_COUNT | .stats.council_tallies += 1 | .xp += ($REVIEW_COUNT * 10 + 20)"
+          persist_many "⚖️ Council tally: PR #$PR_NUM ($REVIEW_COUNT reviews)" \
             "memory/council/" "memory/state.json"

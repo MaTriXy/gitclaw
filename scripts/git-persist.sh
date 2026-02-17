@@ -43,15 +43,21 @@ persist() {
     --author="gitclaw[bot] <gitclaw[bot]@users.noreply.github.com>"
 
   # Push with retry (handles race conditions from parallel workflows)
-  local retries=3
+  local retries=5
+  # Random jitter (0-3s) to spread out parallel pushes
+  sleep "$((RANDOM % 4))"
   for i in $(seq 1 $retries); do
     if git push origin "$branch" 2>/dev/null; then
       log_info "Persisted: $file_path"
       return 0
     fi
-    log_warn "Push attempt $i failed, rebasing and retrying..."
-    git pull --rebase origin "$branch" 2>/dev/null || true
-    sleep "$((i * 2))"
+    log_warn "Push attempt $i/$retries failed, rebasing and retrying..."
+    if ! git pull --rebase origin "$branch" 2>/dev/null; then
+      # Rebase conflict — abort and retry with merge
+      git rebase --abort 2>/dev/null || true
+      git pull origin "$branch" --no-edit 2>/dev/null || true
+    fi
+    sleep "$((i * 2 + RANDOM % 3))"
   done
 
   log_error "Failed to persist after $retries attempts: $file_path"
@@ -87,10 +93,22 @@ persist_many() {
   git commit -m "🧠 $commit_message" \
     --author="gitclaw[bot] <gitclaw[bot]@users.noreply.github.com>"
 
-  git push origin main || {
-    git pull --rebase origin main
-    git push origin main
-  }
+  local retries=5
+  sleep "$((RANDOM % 4))"
+  for i in $(seq 1 $retries); do
+    if git push origin main 2>/dev/null; then
+      log_info "Persisted batch"
+      return 0
+    fi
+    log_warn "Batch push attempt $i/$retries failed, retrying..."
+    if ! git pull --rebase origin main 2>/dev/null; then
+      git rebase --abort 2>/dev/null || true
+      git pull origin main --no-edit 2>/dev/null || true
+    fi
+    sleep "$((i * 2 + RANDOM % 3))"
+  done
+  log_error "Failed to persist batch after $retries attempts"
+  return 1
 }
 
 # ---------------------------------------------------------------------------
