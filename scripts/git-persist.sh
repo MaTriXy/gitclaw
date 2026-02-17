@@ -144,6 +144,13 @@ append_memory() {
   log_info "Appended to memory/$category/$filename"
 }
 
+# Ensure git identity is always configured when this script is sourced
+# Prevents "Committer identity unknown" errors in any workflow
+if [[ -z "$(git config user.name 2>/dev/null)" ]]; then
+  git config user.name "gitclaw[bot]" 2>/dev/null || true
+  git config user.email "gitclaw[bot]@users.noreply.github.com" 2>/dev/null || true
+fi
+
 # Allow sourcing or direct execution
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   "${1:?Usage: git-persist.sh <persist|persist_many|update_state|append_memory> [args...]}" "${@:2}"

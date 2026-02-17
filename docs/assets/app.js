@@ -1,5 +1,5 @@
 /* ============================================================================
-   GitClaw Terminal UI — Vanilla JavaScript
+   GitClaw — Vanilla JavaScript
    Tab switching, expandable rows, live clock, JSON highlighting.
    No frameworks. No build tools. Just raw JS.
    ============================================================================ */
@@ -75,15 +75,15 @@ function highlightJSON(container) {
   var text = container.textContent;
 
   // Highlight keys
-  text = text.replace(/"([^"]+)":/g, '<span style="color:#ffb300">"$1"</span>:');
+  text = text.replace(/"([^"]+)":/g, '<span style="color:#1d1d1f;font-weight:600">"$1"</span>:');
   // Highlight string values
-  text = text.replace(/:\s*"([^"]*)"/g, ': <span style="color:#00ff41">"$1"</span>');
+  text = text.replace(/:\s*"([^"]*)"/g, ': <span style="color:#6e6e73">"$1"</span>');
   // Highlight numbers
-  text = text.replace(/:\s*(\d+)/g, ': <span style="color:#00d4ff">$1</span>');
+  text = text.replace(/:\s*(\d+)/g, ': <span style="color:#1d1d1f">$1</span>');
   // Highlight booleans
-  text = text.replace(/:\s*(true|false)/g, ': <span style="color:#ff4444">$1</span>');
+  text = text.replace(/:\s*(true|false)/g, ': <span style="color:#1d1d1f;font-weight:600">$1</span>');
   // Highlight null
-  text = text.replace(/:\s*(null)/g, ': <span style="color:#8b949e">$1</span>');
+  text = text.replace(/:\s*(null)/g, ': <span style="color:#aeaeb2">$1</span>');
 
   container.innerHTML = text;
 }

@@ -215,18 +215,60 @@ def generate_proposal(analysis: dict, context_hint: str = "") -> dict:
     return proposal
 
 
+def repair_json_strings(text: str) -> str:
+    """Fix unescaped newlines/tabs inside JSON string values.
+
+    LLMs often output file contents with literal newlines inside JSON strings
+    instead of \\n escapes, which breaks json.loads(). This walks the string
+    tracking quote boundaries and escapes bare control characters.
+    """
+    result = []
+    in_string = False
+    i = 0
+    while i < len(text):
+        c = text[i]
+        # Check for escaped character — skip the pair
+        if c == '\\' and in_string and i + 1 < len(text):
+            result.append(c)
+            result.append(text[i + 1])
+            i += 2
+            continue
+        # Toggle string state on unescaped quote
+        if c == '"':
+            in_string = not in_string
+            result.append(c)
+        elif in_string and c == '\n':
+            result.append('\\n')
+        elif in_string and c == '\r':
+            result.append('\\r')
+        elif in_string and c == '\t':
+            result.append('\\t')
+        else:
+            result.append(c)
+        i += 1
+    return ''.join(result)
+
+
 def parse_proposal_json(response: str) -> dict:
     """Extract JSON block from LLM response."""
     # Try fenced code block first
     json_match = re.search(r'```(?:json)?\s*\n(.*?)\n```', response, re.DOTALL)
     if json_match:
-        return json.loads(json_match.group(1))
+        raw = json_match.group(1)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return json.loads(repair_json_strings(raw))
 
     # Try raw JSON
     brace_start = response.find("{")
     brace_end = response.rfind("}")
     if brace_start >= 0 and brace_end > brace_start:
-        return json.loads(response[brace_start:brace_end + 1])
+        raw = response[brace_start:brace_end + 1]
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return json.loads(repair_json_strings(raw))
 
     raise ValueError("No valid JSON found in LLM response")
 
@@ -303,7 +345,7 @@ def apply_proposal(proposal: dict) -> tuple:
 
     # Build PR body
     alignment_table = "\n".join(
-        f"| {axis} | {'█' * int(score * 10)}{'░' * (10 - int(score * 10))} {score:.1f} |"
+        f"| {axis} | {score:.1f} |"
         for axis, score in alignment.items()
     )
 

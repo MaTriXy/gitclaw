@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pages Builder — Generates GitClaw's Bloomberg-terminal-style GitHub Pages site.
+Pages Builder — Generates GitClaw's Apple HIG-style GitHub Pages site.
 Reads all memory files, state, and config to produce a static HTML site in docs/.
 No frameworks, no pip — pure stdlib HTML generation.
 """
@@ -77,6 +77,7 @@ def load_agent_config() -> list:
 
     agents = []
     current = {}
+    in_agents_block = False
     content = config_file.read_text()
 
     for line in content.split("\n"):
@@ -84,14 +85,23 @@ def load_agent_config() -> list:
         if not stripped or stripped.startswith("#"):
             continue
 
-        # Top-level key (agent name or 'defaults')
+        # Top-level key
         if not line.startswith(" ") and stripped.endswith(":"):
-            if current and current.get("_key") not in ("agents", "defaults"):
+            if current:
                 agents.append(current)
-            current = {"_key": stripped.rstrip(":")}
+                current = {}
+            in_agents_block = (stripped == "agents:")
             continue
 
-        # Indented key:value
+        # Agent name (2-space indent, ends with colon, no value)
+        agent_match = re.match(r'^  (\w+):\s*$', line)
+        if agent_match and in_agents_block:
+            if current:
+                agents.append(current)
+            current = {"_key": agent_match.group(1)}
+            continue
+
+        # Property (4-space indent under agent, or 2-space under top-level)
         kv_match = re.match(r'\s+(\w+):\s*"?([^"]*)"?\s*$', line)
         if kv_match and current:
             key, val = kv_match.group(1), kv_match.group(2).strip()
@@ -101,7 +111,7 @@ def load_agent_config() -> list:
                 val = False
             current[key] = val
 
-    if current and current.get("_key") not in ("agents", "defaults"):
+    if current:
         agents.append(current)
 
     return agents
@@ -110,25 +120,24 @@ def load_agent_config() -> list:
 def get_recent_activity(limit: int = 50) -> list:
     """Build a chronological activity feed from all memory categories."""
     categories = [
-        ("dreams", "🌙", "Dream"),
-        ("lore", "📜", "Lore"),
-        ("research", "🔍", "Research"),
-        ("roasts", "🔥", "Roast"),
-        ("fortunes", "🔮", "Fortune"),
-        ("hn", "📰", "HN Digest"),
-        ("news", "🥷", "News"),
-        ("crypto", "🔮", "Crypto"),
-        ("stocks", "🧙", "Stock"),
-        ("proposals", "🏗️", "Proposal"),
-        ("council", "⚖️", "Council"),
+        ("dreams", "Dream"),
+        ("lore", "Lore"),
+        ("research", "Research"),
+        ("roasts", "Roast"),
+        ("fortunes", "Fortune"),
+        ("hn", "HN Digest"),
+        ("news", "News"),
+        ("crypto", "Crypto"),
+        ("stocks", "Stock"),
+        ("proposals", "Proposal"),
+        ("council", "Council"),
     ]
 
     activities = []
-    for cat, emoji, label in categories:
+    for cat, label in categories:
         for entry in load_memory_files(cat):
             activities.append({
                 "date": entry["date"],
-                "emoji": emoji,
                 "label": label,
                 "title": entry["title"],
                 "category": cat,
@@ -139,7 +148,6 @@ def get_recent_activity(limit: int = 50) -> list:
             date_str = entry.get("proposed_at", entry.get("date", ""))[:10]
             activities.append({
                 "date": date_str or "unknown",
-                "emoji": emoji,
                 "label": label,
                 "title": entry.get("title", entry.get("_file", "record")),
                 "category": cat,
@@ -160,35 +168,34 @@ def e(text) -> str:
 def nav_html(active: str) -> str:
     """Generate the navigation bar."""
     pages = [
-        ("index.html", "DASHBOARD"),
-        ("memory.html", "MEMORY"),
-        ("council.html", "COUNCIL"),
-        ("agents.html", "AGENTS"),
-        ("debug.html", "DEBUG"),
-        ("blog/index.html", "BLOG"),
+        ("index.html", "Dashboard"),
+        ("memory.html", "Memory"),
+        ("council.html", "Council"),
+        ("agents.html", "Agents"),
+        ("debug.html", "Debug"),
+        ("blog/index.html", "Blog"),
     ]
     links = []
     for href, label in pages:
         cls = ' class="active"' if label.lower() == active.lower() else ""
-        links.append(f'<a href="{href}"{cls}>[{label}]</a>')
-    return "  ".join(links)
+        links.append(f'<a href="{href}"{cls}>{label}</a>')
+    return "\n".join(links)
 
 
-def terminal_bar(state: dict) -> str:
-    """Generate the top terminal status bar."""
+def header_bar(state: dict) -> str:
+    """Generate the top header bar."""
     xp = state.get("xp", 0)
     level = state.get("level", "Unknown")
-    persona = state.get("agent", {}).get("persona", "default")
     streak = state.get("streak", {}).get("current", 0)
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-
-    filled = min(10, int((xp % 50) / 5)) if xp < 10000 else 10
-    bar = "█" * filled + "░" * (10 - filled)
 
     return (
-        f'<div class="terminal-bar">'
-        f'<span>GITCLAW TERMINAL v1.0 | {e(persona.upper())} | {now}</span>'
-        f'<span>XP: {bar} {xp} | LEVEL: {e(level)} | STREAK: {streak}d</span>'
+        f'<div class="header-bar">'
+        f'<span class="header-title">GitClaw</span>'
+        f'<div class="header-meta">'
+        f'<span>Level {e(level)}</span>'
+        f'<span>XP {xp}</span>'
+        f'<span>Streak {streak}d</span>'
+        f'</div>'
         f'</div>'
     )
 
@@ -205,7 +212,7 @@ def page_wrapper(title: str, active: str, state: dict, body: str) -> str:
     <link rel="stylesheet" href="{"" if "/" not in active else "../"}assets/style.css">
 </head>
 <body>
-    {terminal_bar(state)}
+    {header_bar(state)}
     <nav class="nav">{nav_html(active)}</nav>
     <main class="main">
         {body}
@@ -317,8 +324,7 @@ def generate_dashboard(state: dict, activity: list) -> str:
     for act in activity[:15]:
         activity_rows += (
             f"<tr>"
-            f"<td class='dim'>{e(act['date'])}</td>"
-            f"<td>{act['emoji']}</td>"
+            f"<td class='tertiary'>{e(act['date'])}</td>"
             f"<td>{e(act['label'])}</td>"
             f"<td>{e(act['title'][:60])}</td>"
             f"</tr>\n"
@@ -329,28 +335,28 @@ def generate_dashboard(state: dict, activity: list) -> str:
     if achievements:
         ach_html = " ".join(f'<span class="badge">{e(a)}</span>' for a in achievements)
     else:
-        ach_html = '<span class="dim">No achievements yet</span>'
+        ach_html = '<span class="tertiary">No achievements yet</span>'
 
     body = f"""
     <div class="grid-3">
         <div class="panel">
-            <h2 class="panel-title">AGENT STATS</h2>
+            <h2 class="panel-title">Agent Stats</h2>
             <table class="data-table">
                 <thead><tr><th>Metric</th><th>Value</th></tr></thead>
                 <tbody>{stats_rows}</tbody>
             </table>
         </div>
         <div class="panel">
-            <h2 class="panel-title">ACTIVITY FEED</h2>
+            <h2 class="panel-title">Activity Feed</h2>
             <table class="data-table feed">
-                <thead><tr><th>Date</th><th></th><th>Agent</th><th>Action</th></tr></thead>
+                <thead><tr><th>Date</th><th>Agent</th><th>Action</th></tr></thead>
                 <tbody>{activity_rows}</tbody>
             </table>
         </div>
         <div class="panel">
-            <h2 class="panel-title">ACHIEVEMENTS</h2>
+            <h2 class="panel-title">Achievements</h2>
             <div class="achievements">{ach_html}</div>
-            <h2 class="panel-title" style="margin-top:1rem">AGENT INFO</h2>
+            <h2 class="panel-title" style="margin-top:1rem">Agent Info</h2>
             <table class="data-table">
                 <tr><td>Name</td><td>{e(state.get('agent', {}).get('name', 'GitClaw'))}</td></tr>
                 <tr><td>Persona</td><td>{e(state.get('agent', {}).get('persona', 'default'))}</td></tr>
@@ -367,25 +373,25 @@ def generate_dashboard(state: dict, activity: list) -> str:
 def generate_memory_browser(state: dict) -> str:
     """Generate the memory browser page with tabs."""
     categories = [
-        ("dreams", "Dreams", "🌙"),
-        ("lore", "Lore", "📜"),
-        ("research", "Research", "🔍"),
-        ("roasts", "Roasts", "🔥"),
-        ("fortunes", "Fortunes", "🔮"),
-        ("hn", "HN", "📰"),
-        ("news", "News", "🥷"),
-        ("crypto", "Crypto", "🔮"),
-        ("stocks", "Stocks", "🧙"),
+        ("dreams", "Dreams"),
+        ("lore", "Lore"),
+        ("research", "Research"),
+        ("roasts", "Roasts"),
+        ("fortunes", "Fortunes"),
+        ("hn", "HN"),
+        ("news", "News"),
+        ("crypto", "Crypto"),
+        ("stocks", "Stocks"),
     ]
 
     tabs_html = ""
     panels_html = ""
 
-    for i, (cat, label, emoji) in enumerate(categories):
+    for i, (cat, label) in enumerate(categories):
         entries = load_memory_files(cat)
         active = " active" if i == 0 else ""
 
-        tabs_html += f'<button class="tab-btn{active}" data-tab="{cat}">{emoji} {label} ({len(entries)})</button>\n'
+        tabs_html += f'<button class="tab-btn{active}" data-tab="{cat}">{label} ({len(entries)})</button>\n'
 
         entries_html = ""
         if entries:
@@ -394,7 +400,7 @@ def generate_memory_browser(state: dict) -> str:
                 entries_html += f"""
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">{e(entry['date'])}</span>
+                        <span class="tertiary">{e(entry['date'])}</span>
                         <span>{e(entry['title'][:80])}</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -409,7 +415,7 @@ def generate_memory_browser(state: dict) -> str:
 
     body = f"""
     <div class="panel full-width">
-        <h2 class="panel-title">MEMORY BROWSER</h2>
+        <h2 class="panel-title">Memory Browser</h2>
         <div class="tabs">{tabs_html}</div>
         <div class="tab-content">{panels_html}</div>
     </div>"""
@@ -434,18 +440,23 @@ def generate_council_log(state: dict) -> str:
 
             score_bar = ""
             for axis, score in scores.items():
-                filled = int(float(score) * 10)
-                bar = "█" * filled + "░" * (10 - filled)
-                score_bar += f"<div class='score-row'><span class='dim'>{e(axis[:4])}</span> {bar} {score}</div>"
+                pct = int(float(score) * 100)
+                score_bar += (
+                    f"<div class='score-row'>"
+                    f"<span class='label'>{e(axis[:6])}</span>"
+                    f"<div class='score-bar'><div class='score-bar-fill' style='width:{pct}%'></div></div>"
+                    f"<span class='score-value'>{score}</span>"
+                    f"</div>"
+                )
 
-            status_cls = {"proposed": "amber", "approved": "green", "rejected": "red"}.get(status, "dim")
+            status_cls = {"proposed": "status-proposed", "approved": "status-approved", "rejected": "status-rejected"}.get(status, "tertiary")
 
             rows += f"""
             <div class="council-entry">
                 <div class="entry-header" onclick="toggleEntry(this)">
-                    <span class="dim">PR #{e(str(pr_num))}</span>
+                    <span class="tertiary">PR #{e(str(pr_num))}</span>
                     <span>{e(title[:60])}</span>
-                    <span class="dim">{e(date)}</span>
+                    <span class="tertiary">{e(date)}</span>
                     <span class="{status_cls}">{e(status.upper())}</span>
                     <span class="expand-icon">+</span>
                 </div>
@@ -464,7 +475,7 @@ def generate_council_log(state: dict) -> str:
             council_html += f"""
             <div class="memory-entry">
                 <div class="entry-header" onclick="toggleEntry(this)">
-                    <span class="dim">{e(entry['date'])}</span>
+                    <span class="tertiary">{e(entry['date'])}</span>
                     <span>{e(entry['title'][:60])}</span>
                     <span class="expand-icon">+</span>
                 </div>
@@ -475,11 +486,11 @@ def generate_council_log(state: dict) -> str:
 
     body = f"""
     <div class="panel full-width">
-        <h2 class="panel-title">ARCHITECT PROPOSALS</h2>
+        <h2 class="panel-title">Architect Proposals</h2>
         {rows}
     </div>
     <div class="panel full-width">
-        <h2 class="panel-title">COUNCIL REVIEWS</h2>
+        <h2 class="panel-title">Council Reviews</h2>
         {council_html or '<div class="empty">No council reviews yet.</div>'}
     </div>"""
 
@@ -493,7 +504,6 @@ def generate_agents_page(state: dict) -> str:
     cards = ""
     for agent in agents:
         name = agent.get("name", agent.get("_key", "Unknown"))
-        emoji = agent.get("emoji", "🤖")
         desc = agent.get("description", "")
         enabled = agent.get("enabled", False)
         trigger = agent.get("trigger", "")
@@ -501,8 +511,11 @@ def generate_agents_page(state: dict) -> str:
         command = agent.get("command", "")
         plugin = agent.get("plugin", "")
 
-        status_cls = "green" if enabled else "dim"
-        status_txt = "ACTIVE" if enabled else "DISABLED"
+        # Generate initials from agent name (e.g. "Morning Roast" → "MR")
+        initials = "".join(w[0] for w in name.split()[:2]).upper() if name else "?"
+
+        status_cls = "status-active" if enabled else "status-disabled"
+        status_txt = "Active" if enabled else "Disabled"
         plugin_badge = f'<span class="badge">{e(plugin)}</span>' if plugin else ""
 
         trigger_info = e(trigger)
@@ -514,20 +527,20 @@ def generate_agents_page(state: dict) -> str:
         cards += f"""
         <div class="agent-card {"" if enabled else "disabled"}">
             <div class="agent-header">
-                <span class="agent-emoji">{emoji}</span>
+                <span class="agent-icon">{initials}</span>
                 <span class="agent-name">{e(name)}</span>
                 {plugin_badge}
             </div>
             <div class="agent-desc">{e(desc)}</div>
             <div class="agent-meta">
                 <span class="{status_cls}">{status_txt}</span>
-                <span class="dim">{trigger_info}</span>
+                <span class="tertiary">{trigger_info}</span>
             </div>
         </div>"""
 
     body = f"""
     <div class="panel full-width">
-        <h2 class="panel-title">AGENT STATUS</h2>
+        <h2 class="panel-title">Agent Status</h2>
         <div class="agent-grid">{cards}</div>
     </div>"""
 
@@ -549,18 +562,18 @@ def generate_debug_page(state: dict) -> str:
             if line.strip():
                 commits_html += f"<div class='commit-line'>{e(line)}</div>\n"
     except Exception:
-        commits_html = '<div class="dim">Could not load git log</div>'
+        commits_html = '<div class="tertiary">Could not load git log</div>'
 
     body = f"""
     <div class="grid-2">
         <div class="panel">
-            <h2 class="panel-title">STATE.JSON</h2>
+            <h2 class="panel-title">State</h2>
             <pre class="json-view"><code>{e(state_json)}</code></pre>
         </div>
         <div class="panel">
-            <h2 class="panel-title">RECENT COMMITS</h2>
+            <h2 class="panel-title">Recent Commits</h2>
             <div class="commit-log">{commits_html}</div>
-            <h2 class="panel-title" style="margin-top:1rem">MEMORY INVENTORY</h2>
+            <h2 class="panel-title" style="margin-top:1rem">Memory Inventory</h2>
             <table class="data-table">
                 <thead><tr><th>Category</th><th>Files</th></tr></thead>
                 <tbody>
@@ -592,13 +605,13 @@ def generate_blog(state: dict) -> str:
 
     posts = []
     for entry in lore:
-        entry["type"] = "📜 Lore"
+        entry["type"] = "Lore"
         posts.append(entry)
     for entry in research:
-        entry["type"] = "🔍 Research"
+        entry["type"] = "Research"
         posts.append(entry)
     for entry in dreams:
-        entry["type"] = "🌙 Dream"
+        entry["type"] = "Dream"
         posts.append(entry)
 
     posts.sort(key=lambda x: x.get("date", ""), reverse=True)
@@ -610,7 +623,7 @@ def generate_blog(state: dict) -> str:
             posts_html += f"""
             <div class="blog-post">
                 <div class="entry-header" onclick="toggleEntry(this)">
-                    <span class="dim">{e(post['date'])}</span>
+                    <span class="tertiary">{e(post['date'])}</span>
                     <span class="badge">{e(post['type'])}</span>
                     <span>{e(post['title'][:80])}</span>
                     <span class="expand-icon">+</span>
@@ -624,12 +637,11 @@ def generate_blog(state: dict) -> str:
 
     body = f"""
     <div class="panel full-width">
-        <h2 class="panel-title">AGENTIC WEBRING // BLOG</h2>
+        <h2 class="panel-title">Blog</h2>
         <div class="webring-nav">
-            <a href="../index.html">[DASHBOARD]</a>
-            <a href="../memory.html">[MEMORY]</a>
-            <a href="../council.html">[COUNCIL]</a>
-            <span class="dim">// all nodes connected //</span>
+            <a href="../index.html">Dashboard</a>
+            <a href="../memory.html">Memory</a>
+            <a href="../council.html">Council</a>
         </div>
         {posts_html}
     </div>"""

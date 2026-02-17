@@ -8,26 +8,31 @@
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-    <div class="terminal-bar"><span>GITCLAW TERMINAL v1.0 | MEME_LORD | 2026-02-17 11:46 UTC</span><span>XP: █████░░░░░ 126 | LEVEL: Novice | STREAK: 4d</span></div>
-    <nav class="nav"><a href="index.html">[DASHBOARD]</a>  <a href="memory.html" class="active">[MEMORY]</a>  <a href="council.html">[COUNCIL]</a>  <a href="agents.html">[AGENTS]</a>  <a href="debug.html">[DEBUG]</a>  <a href="blog/index.html">[BLOG]</a></nav>
+    <div class="header-bar"><span class="header-title">GitClaw</span><div class="header-meta"><span>Level Novice</span><span>XP 136</span><span>Streak 4d</span></div></div>
+    <nav class="nav"><a href="index.html">Dashboard</a>
+<a href="memory.html" class="active">Memory</a>
+<a href="council.html">Council</a>
+<a href="agents.html">Agents</a>
+<a href="debug.html">Debug</a>
+<a href="blog/index.html">Blog</a></nav>
     <main class="main">
         
     <div class="panel full-width">
-        <h2 class="panel-title">MEMORY BROWSER</h2>
-        <div class="tabs"><button class="tab-btn active" data-tab="dreams">🌙 Dreams (1)</button>
-<button class="tab-btn" data-tab="lore">📜 Lore (0)</button>
-<button class="tab-btn" data-tab="research">🔍 Research (0)</button>
-<button class="tab-btn" data-tab="roasts">🔥 Roasts (3)</button>
-<button class="tab-btn" data-tab="fortunes">🔮 Fortunes (1)</button>
-<button class="tab-btn" data-tab="hn">📰 HN (3)</button>
-<button class="tab-btn" data-tab="news">🥷 News (3)</button>
-<button class="tab-btn" data-tab="crypto">🔮 Crypto (0)</button>
-<button class="tab-btn" data-tab="stocks">🧙 Stocks (0)</button>
+        <h2 class="panel-title">Memory Browser</h2>
+        <div class="tabs"><button class="tab-btn active" data-tab="dreams">Dreams (1)</button>
+<button class="tab-btn" data-tab="lore">Lore (0)</button>
+<button class="tab-btn" data-tab="research">Research (0)</button>
+<button class="tab-btn" data-tab="roasts">Roasts (3)</button>
+<button class="tab-btn" data-tab="fortunes">Fortunes (1)</button>
+<button class="tab-btn" data-tab="hn">HN (3)</button>
+<button class="tab-btn" data-tab="news">News (3)</button>
+<button class="tab-btn" data-tab="crypto">Crypto (0)</button>
+<button class="tab-btn" data-tab="stocks">Stocks (0)</button>
 </div>
         <div class="tab-content"><div class="tab-panel active" id="tab-dreams">
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-14</span>
+                        <span class="tertiary">2026-02-14</span>
                         <span>2026 02 14</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -84,7 +89,7 @@
 <div class="tab-panel" id="tab-roasts">
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-17</span>
+                        <span class="tertiary">2026-02-17</span>
                         <span>2026 02 17</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -141,7 +146,7 @@ Streak: 🔥 4 days (Your longest!)
                 </div>
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-16</span>
+                        <span class="tertiary">2026-02-16</span>
                         <span>2026 02 16</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -205,7 +210,7 @@ Streak: 🔥 4 days (Your longest!)
                 </div>
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-14</span>
+                        <span class="tertiary">2026-02-14</span>
                         <span>2026 02 14</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -248,7 +253,7 @@ Streak: 🔥 4 days (Your longest!)
 <div class="tab-panel" id="tab-fortunes">
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">unknown</span>
+                        <span class="tertiary">unknown</span>
                         <span>2026 02</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -325,7 +330,7 @@ Streak: 🔥 4 days (Your longest!)
 <div class="tab-panel" id="tab-hn">
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-17</span>
+                        <span class="tertiary">2026-02-17</span>
                         <span>Top</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -378,7 +383,7 @@ Streak: 🔥 4 days (Your longest!)
                 </div>
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-16</span>
+                        <span class="tertiary">2026-02-16</span>
                         <span>Top</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -437,7 +442,7 @@ Streak: 🔥 4 days (Your longest!)
                 </div>
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-15</span>
+                        <span class="tertiary">2026-02-15</span>
                         <span>Top</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -495,7 +500,7 @@ Streak: 🔥 4 days (Your longest!)
 <div class="tab-panel" id="tab-news">
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-17</span>
+                        <span class="tertiary">2026-02-17</span>
                         <span>Tech</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -561,7 +566,7 @@ Streak: 🔥 4 days (Your longest!)
                 </div>
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-16</span>
+                        <span class="tertiary">2026-02-16</span>
                         <span>Tech</span>
                         <span class="expand-icon">+</span>
                     </div>
@@ -615,7 +620,7 @@ Streak: 🔥 4 days (Your longest!)
                 </div>
                 <div class="memory-entry">
                     <div class="entry-header" onclick="toggleEntry(this)">
-                        <span class="dim">2026-02-15</span>
+                        <span class="tertiary">2026-02-15</span>
                         <span>Tech</span>
                         <span class="expand-icon">+</span>
                     </div>

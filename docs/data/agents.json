@@ -1,1 +1,289 @@
-[]
+[
+  {
+    "_key": "morning_roast",
+    "name": "Morning Roast",
+    "emoji": "\u2615",
+    "description": "Serves your daily issue digest with extra sass and coffee metaphors",
+    "trigger": "schedule",
+    "prompt_file": "templates/prompts/morning-roast.md",
+    "enabled": true
+  },
+  {
+    "_key": "quest_master",
+    "name": "Quest Master",
+    "emoji": "\u2694\ufe0f",
+    "description": "Turns boring issues into epic RPG quests with XP rewards",
+    "trigger": "issues",
+    "prompt_file": "templates/prompts/quest-master.md",
+    "enabled": true
+  },
+  {
+    "_key": "code_jester",
+    "name": "Code Jester",
+    "emoji": "\ud83c\udccf",
+    "description": "Reviews PRs with witty commentary and actually useful feedback",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/code-jester.md",
+    "enabled": true
+  },
+  {
+    "_key": "wild_fact_finder",
+    "name": "Wild Fact Finder",
+    "emoji": "\ud83d\udd0d",
+    "description": "Researches anything you ask with entertaining tangents and sources",
+    "trigger": "issue_comment",
+    "command": "/research",
+    "prompt_file": "templates/prompts/wild-fact-finder.md",
+    "enabled": true
+  },
+  {
+    "_key": "meme_machine",
+    "name": "Meme Machine",
+    "emoji": "\ud83c\udfa8",
+    "description": "Generates viral content ideas, tweet drafts, and creative copy",
+    "trigger": "workflow_dispatch",
+    "prompt_file": "templates/prompts/meme-machine.md",
+    "enabled": true
+  },
+  {
+    "_key": "lore_keeper",
+    "name": "Lore Keeper",
+    "emoji": "\ud83d\udcdc",
+    "description": "Curates your repo's knowledge base with dramatic narrative flair",
+    "trigger": "issue_comment",
+    "command": "/lore",
+    "prompt_file": "templates/prompts/lore-keeper.md",
+    "enabled": true
+  },
+  {
+    "_key": "dream_interpreter",
+    "name": "Dream Interpreter",
+    "emoji": "\ud83c\udf19",
+    "description": "Personal journaling agent \u2014 interprets dreams and life musings",
+    "trigger": "issue_comment",
+    "command": "/dream",
+    "prompt_file": "templates/prompts/dream-interpreter.md",
+    "enabled": true
+  },
+  {
+    "_key": "fortune_cookie",
+    "name": "Fortune Cookie",
+    "emoji": "\ud83d\udd2e",
+    "description": "Daily wisdom, coding fortunes, and motivational nonsense",
+    "trigger": "schedule",
+    "prompt_file": "templates/prompts/fortune-cookie.md",
+    "enabled": true
+  },
+  {
+    "_key": "hype_man",
+    "name": "Hype Man",
+    "emoji": "\ud83c\udf89",
+    "description": "Celebrates milestones, merged PRs, and closed issues with fanfare",
+    "trigger": "issues",
+    "event": "closed",
+    "prompt_file": "templates/prompts/hype-man.md",
+    "enabled": true
+  },
+  {
+    "_key": "roast_battle",
+    "name": "Roast Battle",
+    "emoji": "\ud83d\udd25",
+    "description": "On-demand code roasts \u2014 point it at any file for brutal honesty",
+    "trigger": "issue_comment",
+    "command": "/roast",
+    "prompt_file": "templates/prompts/roast-battle.md",
+    "enabled": true
+  },
+  {
+    "_key": "hn_scraper",
+    "name": "HN Scraper",
+    "emoji": "\ud83d\udcf0",
+    "description": "Scrapes and analyzes Hacker News stories with hype scores",
+    "trigger": "issue_comment",
+    "command": "/hn",
+    "prompt_file": "templates/prompts/hn-scraper.md",
+    "plugin": "market",
+    "enabled": false
+  },
+  {
+    "_key": "news_scraper",
+    "name": "News Scraper",
+    "emoji": "\ud83e\udd77",
+    "description": "Fetches and analyzes global news with ninja-style delivery",
+    "trigger": "issue_comment",
+    "command": "/news",
+    "prompt_file": "templates/prompts/news-scraper.md",
+    "plugin": "market",
+    "enabled": false
+  },
+  {
+    "_key": "crypto_quant",
+    "name": "Crypto Oracle",
+    "emoji": "\ud83d\udd2e",
+    "description": "Crypto market analysis with quant indicators (RSI, SMA, volatility)",
+    "trigger": "issue_comment",
+    "command": "/crypto",
+    "prompt_file": "templates/prompts/crypto-quant.md",
+    "plugin": "market",
+    "enabled": false
+  },
+  {
+    "_key": "stock_quant",
+    "name": "Stock Wizard",
+    "emoji": "\ud83e\uddd9",
+    "description": "Stock market analysis with quant indicators and wizard flair",
+    "trigger": "issue_comment",
+    "command": "/stock",
+    "prompt_file": "templates/prompts/stock-quant.md",
+    "plugin": "market",
+    "enabled": false
+  },
+  {
+    "_key": "solana_query",
+    "name": "Solana Query",
+    "emoji": "\ud83c\udf10",
+    "description": "On-chain data from Dexscreener, Jupiter, and Solana RPC",
+    "trigger": "issue_comment",
+    "command": "/sol",
+    "prompt_file": "templates/prompts/solana-query.md",
+    "plugin": "solana",
+    "enabled": "false  # Enable via agent.md"
+  },
+  {
+    "_key": "solana_monitor",
+    "name": "Solana Monitor",
+    "emoji": "\ud83d\udce1",
+    "description": "Scheduled wallet balance and token price monitoring",
+    "trigger": "schedule",
+    "schedule": "0 */6 * * *",
+    "prompt_file": "templates/prompts/solana-monitor.md",
+    "plugin": "solana",
+    "enabled": false
+  },
+  {
+    "_key": "solana_builder",
+    "name": "Solana Builder",
+    "emoji": "\ud83d\udd28",
+    "description": "Verifiable Solana program builds via cargo-build-sbf / Anchor",
+    "trigger": "issue_comment",
+    "command": "/build-sbf",
+    "prompt_file": "templates/prompts/solana-builder.md",
+    "plugin": "solana",
+    "enabled": false
+  },
+  {
+    "_key": "architect",
+    "name": "Architect",
+    "emoji": "\ud83c\udfd7\ufe0f",
+    "description": "Autonomously analyzes the repo and proposes code improvements as PRs",
+    "trigger": "schedule",
+    "schedule": "0 6 * * *",
+    "command": "/propose",
+    "prompt_file": "templates/prompts/architect.md",
+    "plugin": "architect",
+    "enabled": false
+  },
+  {
+    "_key": "council_zuckerberg",
+    "name": "Council: Zuckerberg",
+    "emoji": "\ud83d\udc53",
+    "description": "Move fast and break things \u2014 velocity-focused council reviewer",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/council-zuckerberg.md",
+    "plugin": "council",
+    "enabled": false
+  },
+  {
+    "_key": "council_wonderful",
+    "name": "Council: Mr. Wonderful",
+    "emoji": "\ud83d\udcb0",
+    "description": "ROI-obsessed Shark Tank dealmaker council reviewer",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/council-wonderful.md",
+    "plugin": "council",
+    "enabled": false
+  },
+  {
+    "_key": "council_musk",
+    "name": "Council: Musk",
+    "emoji": "\ud83d\ude80",
+    "description": "First principles, 10x ambition, contrarian council reviewer",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/council-musk.md",
+    "plugin": "council",
+    "enabled": false
+  },
+  {
+    "_key": "council_toly",
+    "name": "Council: Toly",
+    "emoji": "\u26a1",
+    "description": "Throughput-obsessed, parallel execution, crypto-native council reviewer",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/council-toly.md",
+    "plugin": "council",
+    "enabled": false
+  },
+  {
+    "_key": "council_satoshi",
+    "name": "Council: Satoshi",
+    "emoji": "\u20bf",
+    "description": "Minimalist, trustless, privacy-focused council reviewer",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/council-satoshi.md",
+    "plugin": "council",
+    "enabled": false
+  },
+  {
+    "_key": "council_cia",
+    "name": "Council: CIA",
+    "emoji": "\ud83d\udd75\ufe0f",
+    "description": "Classified briefing format, OPSEC-focused council reviewer",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/council-cia.md",
+    "plugin": "council",
+    "enabled": false
+  },
+  {
+    "_key": "council_cobain",
+    "name": "Council: Cobain",
+    "emoji": "\ud83c\udfb8",
+    "description": "Anti-establishment, raw authenticity, anti-bloat council reviewer",
+    "trigger": "pull_request",
+    "prompt_file": "templates/prompts/council-cobain.md",
+    "plugin": "council",
+    "enabled": false
+  },
+  {
+    "_key": "pages_builder",
+    "name": "Pages Builder",
+    "emoji": "\ud83d\udcfa",
+    "description": "Builds the Bloomberg-terminal GitHub Pages frontend from memory data",
+    "trigger": "push",
+    "schedule": "0 */4 * * *",
+    "prompt_file": "null",
+    "plugin": "pages",
+    "enabled": false
+  },
+  {
+    "_key": "karen",
+    "name": "Karen",
+    "emoji": "\ud83d\udc85",
+    "description": "QA compliance officer \u2014 audits memory, finds bugs, reviews PRs, files complaints",
+    "trigger": "issue_comment",
+    "command": "/karen",
+    "schedule": "0 5 * * 1",
+    "prompt_file": "templates/prompts/karen.md",
+    "plugin": "architect",
+    "enabled": false
+  },
+  {
+    "_key": "proposal_lint",
+    "name": "Proposal Lint",
+    "emoji": "\ud83d\udd0d",
+    "description": "Syntax gate for Architect PRs \u2014 validates Python and YAML",
+    "trigger": "pull_request",
+    "prompt_file": "null",
+    "plugin": "architect",
+    "enabled": false
+  }
+]
