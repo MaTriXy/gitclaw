@@ -45,11 +45,11 @@ enable: meme-machine
 # Enable SBF builder:
 # enable: solana-builder
 
-## Architect & Council Plugin (optional — uncomment to enable)
-# enable: architect
-# enable: council
-# enable: pages-builder
-# enable: karen
+## Architect & Council Plugin
+enable: architect
+enable: council
+enable: pages-builder
+enable: karen
 
 ## Custom Instructions
 # Add any custom instructions for your agent here.
