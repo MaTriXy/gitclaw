@@ -10,13 +10,115 @@ import json
 import os
 import re
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from common import MEMORY_DIR, REPO_ROOT, load_state, log, today, update_stats, award_xp
 
 DOCS_DIR = REPO_ROOT / "docs"
 DATA_DIR = DOCS_DIR / "data"
+
+# XP level thresholds (mirrored from common.py)
+XP_LEVELS = [
+    (0, "Unawakened"), (50, "Novice"), (150, "Apprentice"), (300, "Journeyman"),
+    (500, "Adept"), (800, "Expert"), (1200, "Master"), (1800, "Grandmaster"),
+    (2500, "Legend"), (5000, "Mythic"), (10000, "Transcendent"),
+]
+
+# Map commit emojis to agent names for workflow run parsing
+EMOJI_AGENTS = {
+    "☕": "Morning Roast", "⚔️": "Quest Master", "🃏": "Code Jester",
+    "🔍": "Fact Finder", "🎨": "Meme Machine", "📜": "Lore Keeper",
+    "🌙": "Dream", "🔮": "Fortune", "🎉": "Hype Man",
+    "🔥": "Roast", "📰": "HN Scraper", "🥷": "News Ninja",
+    "📡": "Solana Monitor", "🌐": "Solana Query", "🔨": "Solana Builder",
+    "📺": "Pages Builder", "💓": "Heartbeat", "🏗️": "Architect",
+    "💅": "Karen",
+}
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def get_xp_progress_pct(xp: int) -> int:
+    """Calculate XP progress percentage toward the next level."""
+    current_threshold = 0
+    next_threshold = 50
+    for threshold, _ in XP_LEVELS:
+        if threshold <= xp:
+            current_threshold = threshold
+        else:
+            next_threshold = threshold
+            break
+    if next_threshold == current_threshold:
+        return 100
+    progress = xp - current_threshold
+    total = next_threshold - current_threshold
+    pct = int((progress / total) * 100)
+    return max(1, pct) if progress > 0 else 0
+
+
+def get_repo_url() -> str:
+    """Get the GitHub repository URL from env or git remote."""
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    if repo:
+        return f"https://github.com/{repo}"
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT), timeout=5,
+        )
+        url = result.stdout.strip()
+        if url.startswith("git@"):
+            url = url.replace(":", "/").replace("git@", "https://")
+        if url.endswith(".git"):
+            url = url[:-4]
+        return url
+    except Exception:
+        return "#"
+
+
+def get_workflow_runs(limit: int = 15) -> list:
+    """Parse recent agent commits from git log as a proxy for workflow runs."""
+    try:
+        # Try bot-authored commits first, fall back to all commits with 🧠 prefix
+        result = subprocess.run(
+            ["git", "log", "--oneline", "--format=%h %aI %s", "-80"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT), timeout=10,
+        )
+        runs = []
+        for line in result.stdout.strip().split("\n"):
+            if not line.strip():
+                continue
+            parts = line.split(" ", 2)
+            if len(parts) < 3:
+                continue
+            sha, timestamp, message = parts
+            # Only process agent memory commits (🧠 prefix)
+            if "\U0001f9e0" not in message:
+                continue
+            agent = "Agent"
+            after = message.split("\U0001f9e0", 1)[1].strip()
+            for emoji, name in EMOJI_AGENTS.items():
+                if after.startswith(emoji):
+                    agent = name
+                    break
+            else:
+                words = after.split(None, 1)
+                if words:
+                    agent = words[0]
+            time_str = timestamp[:16].replace("T", " ")
+            runs.append({"sha": sha, "time": time_str, "agent": agent, "message": message})
+        return runs[:limit]
+    except Exception:
+        return []
+
+
+def get_workflow_file(agent: dict) -> str:
+    """Derive the workflow filename from agent config key."""
+    key = agent.get("_key", "")
+    if key.startswith("council_"):
+        return "council-review.yml"
+    return key.replace("_", "-") + ".yml"
 
 
 # ── Data Loading ─────────────────────────────────────────────────────────────
@@ -195,17 +297,37 @@ def nav_html(active: str, subdir: bool = False) -> str:
 
 
 def header_bar(state: dict) -> str:
-    """Generate the top header bar."""
+    """Generate the top header bar with lobster, docs link, XP bar, alive dot."""
     xp = state.get("xp", 0)
     level = state.get("level", "Unknown")
     streak = state.get("streak", {}).get("current", 0)
+    last_active = state.get("last_active", "")
+    xp_pct = get_xp_progress_pct(xp)
+    repo_url = get_repo_url()
+
+    # Alive indicator: green=today, amber=yesterday, grey=older
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    yesterday_str = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    if last_active == today_str:
+        alive_cls = "alive-green"
+    elif last_active == yesterday_str:
+        alive_cls = "alive-amber"
+    else:
+        alive_cls = "alive-grey"
 
     return (
         f'<div class="header-bar">'
-        f'<span class="header-title">GitClaw</span>'
+        f'<div class="header-left">'
+        f'<span class="alive-dot {alive_cls}"></span>'
+        f'<span class="header-title">\U0001f99e GitClaw</span>'
+        f'<a href="{repo_url}" class="header-link" target="_blank">Docs</a>'
+        f'</div>'
         f'<div class="header-meta">'
-        f'<span>Level {e(level)}</span>'
-        f'<span>XP {xp}</span>'
+        f'<span>{e(level)}</span>'
+        f'<span class="xp-bar-container">'
+        f'XP {xp}'
+        f'<div class="xp-bar"><div class="xp-bar-fill" style="width:{xp_pct}%"></div></div>'
+        f'</span>'
         f'<span>Streak {streak}d</span>'
         f'</div>'
         f'</div>'
@@ -233,7 +355,7 @@ def page_wrapper(title: str, active: str, state: dict, body: str, subdir: bool =
         {body}
     </main>
     <footer class="footer">
-        <span>GitClaw Agent System | 100% GitHub Actions | Zero Infrastructure</span>
+        <span>Powered by <a href="{get_repo_url()}" class="footer-link">GitHub Actions</a> &middot; Zero Infrastructure</span>
         <span id="clock"></span>
     </footer>
     <script src="{prefix}assets/app.js"></script>
@@ -324,61 +446,121 @@ def inline_md(text: str) -> str:
 # ── Page Generators ──────────────────────────────────────────────────────────
 
 def generate_dashboard(state: dict, activity: list) -> str:
-    """Generate the main dashboard page."""
+    """Generate the main dashboard page with quick stats, workflow runs, and activity."""
     stats = state.get("stats", {})
     achievements = state.get("achievements", [])
+    agents = load_agent_config()
+    agent_info = state.get("agent", {})
+    xp = state.get("xp", 0)
+    level = state.get("level", "Unknown")
+    streak = state.get("streak", {}).get("current", 0)
+    total_agents = len(agents)
+    active_agents = sum(1 for a in agents if a.get("enabled"))
+    total_commits = stats.get("commits_made", 0)
+    xp_pct = get_xp_progress_pct(xp)
 
-    # Stats table
-    stats_rows = ""
-    for key, val in sorted(stats.items()):
-        label = key.replace("_", " ").title()
-        stats_rows += f"<tr><td>{e(label)}</td><td class='num'>{val}</td></tr>\n"
+    # ── Quick Stats Cards ──
+    quick_stats = f"""
+    <div class="stat-cards">
+        <div class="stat-card">
+            <div class="stat-value">{xp}</div>
+            <div class="stat-label">{e(level)}</div>
+            <div class="stat-bar"><div class="stat-bar-fill" style="width:{xp_pct}%"></div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{total_commits}</div>
+            <div class="stat-label">Commits</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{active_agents}/{total_agents}</div>
+            <div class="stat-label">Active Agents</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{streak}d</div>
+            <div class="stat-label">Streak</div>
+        </div>
+    </div>"""
 
-    # Activity feed
+    # ── Activity Feed ──
     activity_rows = ""
     for act in activity[:15]:
         activity_rows += (
             f"<tr>"
             f"<td class='tertiary'>{e(act['date'])}</td>"
-            f"<td>{e(act['label'])}</td>"
+            f"<td><span class='badge'>{e(act['label'])}</span></td>"
             f"<td>{e(act['title'][:60])}</td>"
             f"</tr>\n"
         )
 
-    # Achievements
-    ach_html = ""
-    if achievements:
-        ach_html = " ".join(f'<span class="badge">{e(a)}</span>' for a in achievements)
+    # ── Workflow Runs ──
+    runs = get_workflow_runs(12)
+    runs_rows = ""
+    if runs:
+        for run in runs:
+            runs_rows += (
+                f"<tr>"
+                f"<td>{e(run['agent'])}</td>"
+                f"<td class='tertiary'>{e(run['time'])}</td>"
+                f"<td><span class='status-active' style='font-size:12px'>Done</span></td>"
+                f"</tr>\n"
+            )
     else:
-        ach_html = '<span class="tertiary">No achievements yet</span>'
+        runs_rows = '<tr><td colspan="3" class="tertiary" style="text-align:center;padding:16px">No workflow runs yet</td></tr>'
+
+    # ── Agent Stats (non-zero only) ──
+    non_zero = [(k, v) for k, v in sorted(stats.items()) if v > 0]
+    stats_cells = ""
+    for key, val in non_zero:
+        label = key.replace("_", " ").title()
+        stats_cells += f"<tr><td>{e(label)}</td><td class='num'>{val}</td></tr>\n"
+
+    # ── Achievements ──
+    ach_html = (" ".join(f'<span class="badge">{e(a)}</span>' for a in achievements)
+                if achievements else '<span class="tertiary">None yet</span>')
 
     body = f"""
-    <div class="grid-3">
+    {quick_stats}
+    <div class="grid-2">
         <div class="panel">
-            <h2 class="panel-title">Agent Stats</h2>
-            <table class="data-table">
-                <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-                <tbody>{stats_rows}</tbody>
-            </table>
-        </div>
-        <div class="panel">
-            <h2 class="panel-title">Activity Feed</h2>
+            <h2 class="panel-title">Recent Activity</h2>
+            <div class="table-scroll">
             <table class="data-table feed">
                 <thead><tr><th>Date</th><th>Agent</th><th>Action</th></tr></thead>
                 <tbody>{activity_rows}</tbody>
             </table>
+            </div>
         </div>
         <div class="panel">
-            <h2 class="panel-title">Achievements</h2>
-            <div class="achievements">{ach_html}</div>
-            <h2 class="panel-title" style="margin-top:1rem">Agent Info</h2>
+            <h2 class="panel-title">Workflow Runs</h2>
+            <div class="table-scroll">
             <table class="data-table">
-                <tr><td>Name</td><td>{e(state.get('agent', {}).get('name', 'GitClaw'))}</td></tr>
-                <tr><td>Persona</td><td>{e(state.get('agent', {}).get('persona', 'default'))}</td></tr>
-                <tr><td>Born</td><td>{e(state.get('agent', {}).get('born', 'unknown'))}</td></tr>
-                <tr><td>Version</td><td>{e(state.get('agent', {}).get('version', '1.0.0'))}</td></tr>
+                <thead><tr><th>Agent</th><th>Time</th><th>Status</th></tr></thead>
+                <tbody>{runs_rows}</tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    <div class="grid-2" style="margin-top:20px">
+        <div class="panel">
+            <h2 class="panel-title">Agent Stats</h2>
+            <div class="table-scroll">
+            <table class="data-table">
+                <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                <tbody>{stats_cells}</tbody>
+            </table>
+            </div>
+        </div>
+        <div class="panel">
+            <h2 class="panel-title">System</h2>
+            <table class="data-table">
+                <tr><td>Name</td><td>{e(agent_info.get('name', 'GitClaw'))}</td></tr>
+                <tr><td>Persona</td><td>{e(agent_info.get('persona', 'default'))}</td></tr>
+                <tr><td>Born</td><td>{e(agent_info.get('born', 'unknown')[:10])}</td></tr>
+                <tr><td>Version</td><td>{e(agent_info.get('version', '1.0.0'))}</td></tr>
                 <tr><td>Last Active</td><td>{e(state.get('last_active', 'unknown'))}</td></tr>
             </table>
+            <h2 class="panel-title" style="margin-top:12px">Achievements</h2>
+            <div class="achievements">{ach_html}</div>
         </div>
     </div>"""
 
@@ -535,8 +717,9 @@ def humanize_cron(cron: str) -> str:
 
 
 def generate_agents_page(state: dict) -> str:
-    """Generate the agent status grid with category grouping."""
+    """Generate the agent status grid with category grouping and workflow links."""
     agents = load_agent_config()
+    repo_url = get_repo_url()
 
     # Group agents by plugin/category
     groups = [
@@ -582,6 +765,12 @@ def generate_agents_page(state: dict) -> str:
             # Trigger type
             trigger_html = f'<span class="tertiary">{e(trigger)}</span>' if trigger else ""
 
+            # Workflow actions link
+            trigger_link = ""
+            if repo_url != "#":
+                wf = get_workflow_file(agent)
+                trigger_link = f'<a href="{repo_url}/actions/workflows/{wf}" class="trigger-link" target="_blank">Actions</a>'
+
             # Prompt file path
             prompt_html = ""
             if prompt_file:
@@ -593,6 +782,7 @@ def generate_agents_page(state: dict) -> str:
                     <span class="agent-icon">{initials}</span>
                     <span class="agent-name">{e(name)}</span>
                     {cmd_html}
+                    {trigger_link}
                 </div>
                 <div class="agent-desc">{e(desc)}</div>
                 <div class="agent-meta">
