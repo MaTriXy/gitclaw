@@ -14,6 +14,13 @@
     "file": "2026-02-22-top.md"
   },
   {
+    "date": "2026-02-22",
+    "label": "News",
+    "title": "Tech",
+    "category": "news",
+    "file": "2026-02-22-tech.md"
+  },
+  {
     "date": "2026-02-21",
     "label": "HN Digest",
     "title": "Top",
