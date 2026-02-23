@@ -5,7 +5,7 @@
     "born": "2026-02-14T22:16:45Z",
     "version": "1.0.0"
   },
-  "xp": 681,
+  "xp": 691,
   "level": "Adept",
   "stats": {
     "issues_triaged": 0,
@@ -22,7 +22,7 @@
     "solana_monitors": 13,
     "solana_builds": 0,
     "hn_scrapes": 10,
-    "news_scrapes": 8,
+    "news_scrapes": 9,
     "crypto_analyses": 0,
     "stock_analyses": 0,
     "pages_built": 81,
