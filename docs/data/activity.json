@@ -7,6 +7,20 @@
     "file": "2026-02.md"
   },
   {
+    "date": "2026-02-28",
+    "label": "HN Digest",
+    "title": "Top",
+    "category": "hn",
+    "file": "2026-02-28-top.md"
+  },
+  {
+    "date": "2026-02-28",
+    "label": "News",
+    "title": "Tech",
+    "category": "news",
+    "file": "2026-02-28-tech.md"
+  },
+  {
     "date": "2026-02-27",
     "label": "HN Digest",
     "title": "Top",
