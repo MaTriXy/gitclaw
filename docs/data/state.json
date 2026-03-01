@@ -5,7 +5,7 @@
     "born": "2026-02-14T22:16:45Z",
     "version": "1.0.0"
   },
-  "xp": 1131,
+  "xp": 1141,
   "level": "Expert",
   "stats": {
     "issues_triaged": 0,
@@ -25,7 +25,7 @@
     "news_scrapes": 14,
     "crypto_analyses": 0,
     "stock_analyses": 0,
-    "pages_built": 149,
+    "pages_built": 151,
     "council_reviews": 2
   },
   "achievements": [],
