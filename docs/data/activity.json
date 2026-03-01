@@ -8,6 +8,13 @@
   },
   {
     "date": "2026-03-01",
+    "label": "HN Digest",
+    "title": "Top",
+    "category": "hn",
+    "file": "2026-03-01-top.md"
+  },
+  {
+    "date": "2026-03-01",
     "label": "News",
     "title": "Tech",
     "category": "news",
