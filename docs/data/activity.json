@@ -7,6 +7,13 @@
     "file": "2026-02.md"
   },
   {
+    "date": "2026-03-01",
+    "label": "News",
+    "title": "Tech",
+    "category": "news",
+    "file": "2026-03-01-tech.md"
+  },
+  {
     "date": "2026-02-28",
     "label": "HN Digest",
     "title": "Top",
